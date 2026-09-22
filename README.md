@@ -35,6 +35,12 @@ docs/                Architecture, roadmap, integrations, decisions
 .github/workflows/   CI and GitHub Pages deployment
 ```
 
+## Live prototype
+
+Field Explorer: https://link9060.github.io/Resonant-Field/
+
+The Explorer currently supports an interactive graph, search/filtering, relationship inspection, a RAVIN retrieval demo, and browser-local custom node creation.
+
 ## Current status
 
 **Foundation / v0.1**
