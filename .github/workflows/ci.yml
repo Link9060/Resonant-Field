@@ -32,3 +32,6 @@ jobs:
 
       - name: Run core behavior tests
         run: npm test
+
+      - name: Check Explorer JavaScript
+        run: node --check apps/explorer/app.js
