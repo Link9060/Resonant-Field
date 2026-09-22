@@ -23,7 +23,7 @@ const labels = {
   chat: 'Chats'
 };
 
-const nodes = [
+const seedNodes = [
   { id:'p-nova', type:'project', title:'Nova Enduro', summary:'Resonant Bikes enduro frame and suspension project.', cluster:'Nova', source:'Relay', ai:true, recent:9, x:-280,y:-70 },
   { id:'n-linkage', type:'note', title:'Linkage Geometry', summary:'Progression, axle path, pivot layout, and packaging notes.', cluster:'Nova', source:'Relay Notes', ai:true, recent:8, x:-410,y:-185 },
   { id:'f-leverage', type:'file', title:'Leverage Analysis.pdf', summary:'Suspension leverage analysis and design snapshots.', cluster:'Nova', source:'Link Storage', ai:true, recent:7, x:-435,y:45 },
@@ -48,6 +48,28 @@ const nodes = [
   { id:'n-arch', type:'note', title:'Field architecture', summary:'Universal nodes, edges, adapters, permissions, and retrieval.', cluster:'Field', source:'Field Docs', ai:true, recent:10, x:-30,y:-155 },
   { id:'f-schema', type:'file', title:'Knowledge schemas', summary:'Portable node and edge JSON schemas.', cluster:'Field', source:'Field Core', ai:true, recent:10, x:35,y:135 }
 ];
+
+const CUSTOM_NODE_KEY = 'resonant-field-explorer-custom-nodes-v1';
+
+function loadCustomNodes() {
+  try {
+    const raw = localStorage.getItem(CUSTOM_NODE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter(node => node && typeof node.id === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCustomNodes() {
+  try {
+    localStorage.setItem(CUSTOM_NODE_KEY, JSON.stringify(nodes.filter(node => node.custom)));
+  } catch {
+    // Local storage is a convenience for the prototype; Field still works without it.
+  }
+}
+
+const nodes = [...seedNodes, ...loadCustomNodes()];
 
 const edges = [
   ['p-nova','n-linkage',.95,'contains'], ['p-nova','f-leverage',.88,'contains'], ['p-nova','t-prototype',.82,'contains'],
@@ -98,6 +120,44 @@ function setupFilters() {
 }
 
 function getNode(id) { return nodes.find(n => n.id === id); }
+
+function clusterAnchor(cluster) {
+  if (!cluster) return null;
+  return nodes.find(node => node.type === 'project' && node.cluster.toLowerCase() === cluster.toLowerCase()) || null;
+}
+
+function customNodePosition(cluster) {
+  const anchor = clusterAnchor(cluster);
+  if (anchor) {
+    const angle = Math.random() * Math.PI * 2;
+    const radius = 95 + Math.random() * 75;
+    return {
+      x: anchor.x + Math.cos(angle) * radius,
+      y: anchor.y + Math.sin(angle) * radius
+    };
+  }
+
+  return {
+    x: (Math.random() - .5) * 480,
+    y: (Math.random() - .5) * 360
+  };
+}
+
+function attachCustomNode(node) {
+  const anchor = clusterAnchor(node.cluster);
+  if (!anchor || anchor.id === node.id) return;
+  const edgeId = `custom-${anchor.id}-${node.id}`;
+  if (edges.some(edge => edge.id === edgeId)) return;
+  edges.push({
+    id: edgeId,
+    a: anchor.id,
+    b: node.id,
+    strength: .78,
+    type: 'contains'
+  });
+}
+
+for (const node of nodes.filter(node => node.custom)) attachCustomNode(node);
 
 function isVisible(node) {
   if (!node || !state.filters.has(node.type)) return false;
@@ -262,6 +322,8 @@ function selectNode(id) {
       <div class="permission-row"><span>External AI</span><span class="permission-pill">User controlled</span></div>
     </div>
 
+    ${node.custom ? `<div class="inspector-section"><p class="section-label">PROTOTYPE DATA</p><button class="delete-node" data-delete-node="${node.id}">Remove this local node</button></div>` : ''}
+
     <div class="inspector-section">
       <p class="section-label">RELATIONSHIPS · ${related.length}</p>
       <div class="related-list">
@@ -271,11 +333,34 @@ function selectNode(id) {
   `;
 
   inspector.querySelectorAll('[data-node]').forEach(btn => btn.addEventListener('click', () => selectNode(btn.dataset.node)));
+  inspector.querySelectorAll('[data-delete-node]').forEach(btn => btn.addEventListener('click', () => {
+    const idToDelete = btn.dataset.deleteNode;
+    const index = nodes.findIndex(item => item.id === idToDelete && item.custom);
+    if (index === -1) return;
+    nodes.splice(index, 1);
+    for (let i = edges.length - 1; i >= 0; i--) {
+      if (edges[i].a === idToDelete || edges[i].b === idToDelete) edges.splice(i, 1);
+    }
+    saveCustomNodes();
+    selectNode(null);
+    setupFilterCounts();
+    updateStats();
+    render();
+  }));
   render();
 }
 
 function escapeHtml(value) {
   return value.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function setupFilterCounts() {
+  document.querySelectorAll('.filter').forEach(button => {
+    const type = button.dataset.type;
+    const count = nodes.filter(node => node.type === type).length;
+    const target = button.querySelector('.filter-count');
+    if (target) target.textContent = String(count);
+  });
 }
 
 function updateStats() {
@@ -332,6 +417,62 @@ function runRavin(prompt) {
   updateStats();
   render();
 }
+
+const nodeDialog = document.querySelector('#nodeDialog');
+const nodeForm = document.querySelector('#nodeForm');
+
+function openNodeDialog() {
+  nodeForm.reset();
+  document.querySelector('#nodeRavin').checked = true;
+  nodeDialog.showModal();
+  setTimeout(() => document.querySelector('#nodeTitle').focus(), 0);
+}
+
+function closeNodeDialog() {
+  nodeDialog.close();
+}
+
+document.querySelector('#addNode').addEventListener('click', openNodeDialog);
+document.querySelector('#closeDialog').addEventListener('click', closeNodeDialog);
+document.querySelector('#cancelDialog').addEventListener('click', closeNodeDialog);
+
+nodeForm.addEventListener('submit', event => {
+  event.preventDefault();
+  const title = document.querySelector('#nodeTitle').value.trim();
+  if (!title) return;
+
+  const type = document.querySelector('#nodeType').value;
+  const clusterInput = document.querySelector('#nodeCluster').value.trim();
+  const cluster = clusterInput || (type === 'project' ? title : 'Personal');
+  const summary = document.querySelector('#nodeSummary').value.trim() || 'User-created Field node.';
+  const position = customNodePosition(cluster);
+
+  const node = {
+    id: `local-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`,
+    type,
+    title,
+    summary,
+    cluster,
+    source: 'Field Explorer',
+    ai: document.querySelector('#nodeRavin').checked,
+    recent: 10,
+    x: position.x,
+    y: position.y,
+    custom: true
+  };
+
+  nodes.push(node);
+  attachCustomNode(node);
+  saveCustomNodes();
+  setupFilterCounts();
+  updateStats();
+  closeNodeDialog();
+  selectNode(node.id);
+});
+
+nodeDialog.addEventListener('click', event => {
+  if (event.target === nodeDialog) closeNodeDialog();
+});
 
 document.querySelector('#searchInput').addEventListener('input', e => {
   state.query = e.target.value.trim();
@@ -410,6 +551,7 @@ canvas.addEventListener('wheel', e => {
 canvas.addEventListener('mouseleave', () => { if (!state.dragging) { state.hovered=null; render(); } });
 
 setupFilters();
+setupFilterCounts();
 updateStats();
 updateZoom();
 new ResizeObserver(resize).observe(canvas);
