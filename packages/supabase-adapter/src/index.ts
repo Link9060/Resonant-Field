@@ -1,8 +1,23 @@
-import type {
-  FieldClient,
-  FieldSearchHit,
-  FieldSearchRequest,
-} from '@resonant/field-sdk';
+export type FieldSearchRequest = {
+  query: string;
+  limit?: number;
+  types?: string[];
+  projectId?: string;
+};
+
+export type FieldSearchHit = {
+  nodeId: string;
+  title: string;
+  type: string;
+  score: number;
+  snippet?: string;
+};
+
+export interface FieldClient {
+  search(request: FieldSearchRequest): Promise<FieldSearchHit[]>;
+  getNode(nodeId: string): Promise<unknown>;
+  getRelated(nodeId: string): Promise<unknown[]>;
+}
 
 export type FieldSearchMode = 'owner' | 'ravin';
 
