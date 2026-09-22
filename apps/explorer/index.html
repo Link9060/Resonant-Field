@@ -3,13 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="Developer explorer for the Resonant Field knowledge engine." />
+  <meta name="description" content="Interactive developer explorer for the Resonant Field knowledge engine." />
   <title>Resonant Field — Explorer</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <canvas id="field" aria-hidden="true"></canvas>
-  <main class="shell">
+  <div class="app-shell">
     <header class="topbar">
       <div class="brand">
         <div class="mark" aria-hidden="true">✦</div>
@@ -18,51 +17,93 @@
           <h1>Field Explorer</h1>
         </div>
       </div>
-      <span class="status"><i></i> Foundation online</span>
+
+      <div class="top-actions">
+        <span class="status"><i></i> Interactive prototype</span>
+        <a class="repo-link" href="https://github.com/Link9060/Resonant-Field">GitHub ↗</a>
+      </div>
     </header>
 
-    <section class="hero">
-      <p class="kicker">SHARED KNOWLEDGE INFRASTRUCTURE</p>
-      <h2>One context layer.<br />Every Resonant project.</h2>
-      <p class="lede">Field connects notes, files, tasks, events, projects, and AI context without forcing each app to build its own memory system.</p>
-      <div class="actions">
-        <a class="primary" href="https://github.com/Link9060/Resonant-Field">View repository</a>
-        <a class="secondary" href="https://github.com/Link9060/Resonant-Field/blob/main/docs/ROADMAP.md">Roadmap</a>
+    <aside class="sidebar panel">
+      <section>
+        <p class="section-label">SEARCH FIELD</p>
+        <div class="search-wrap">
+          <input id="searchInput" type="search" autocomplete="off" placeholder="Search notes, files, projects…" />
+          <kbd>⌘K</kbd>
+        </div>
+      </section>
+
+      <section>
+        <div class="section-head">
+          <p class="section-label">SHOW</p>
+          <button id="resetFilters" class="text-button">Reset</button>
+        </div>
+        <div id="filters" class="filters"></div>
+      </section>
+
+      <section>
+        <p class="section-label">VIEW</p>
+        <div class="segmented" role="group" aria-label="Graph view">
+          <button class="view-button active" data-view="all">All</button>
+          <button class="view-button" data-view="projects">Projects</button>
+          <button class="view-button" data-view="recent">Recent</button>
+        </div>
+      </section>
+
+      <section class="stats">
+        <div><strong id="nodeCount">0</strong><span>Nodes</span></div>
+        <div><strong id="edgeCount">0</strong><span>Links</span></div>
+        <div><strong id="clusterCount">0</strong><span>Clusters</span></div>
+      </section>
+
+      <section class="ravin-box">
+        <div class="ravin-head">
+          <span class="ravin-orb">✦</span>
+          <div>
+            <p class="section-label">RAVIN CONTEXT TEST</p>
+            <strong>Ask the Field</strong>
+          </div>
+        </div>
+        <p>Simulates the context bundle RAVIN would receive from Field.</p>
+        <button class="prompt-chip" data-prompt="What do I know about Nova suspension?">Nova suspension</button>
+        <button class="prompt-chip" data-prompt="What is left for Relay launch?">Relay launch</button>
+        <button class="prompt-chip" data-prompt="What school work is coming up?">School work</button>
+        <div id="ravinResult" class="ravin-result" hidden></div>
+      </section>
+    </aside>
+
+    <main class="graph-shell panel">
+      <div class="graph-toolbar">
+        <div>
+          <p class="section-label">KNOWLEDGE MAP</p>
+          <strong id="viewTitle">Everything connected</strong>
+        </div>
+        <div class="toolbar-buttons">
+          <button id="centerGraph" title="Center graph">Center</button>
+          <button id="zoomOut" title="Zoom out">−</button>
+          <span id="zoomLabel">100%</span>
+          <button id="zoomIn" title="Zoom in">+</button>
+        </div>
       </div>
-    </section>
 
-    <section class="grid" aria-label="Field status">
-      <article class="card accent">
-        <span>ENGINE</span>
-        <strong>v0.1</strong>
-        <p>Universal nodes, edges, and shared contracts.</p>
-      </article>
-      <article class="card">
-        <span>FIRST CONSUMERS</span>
-        <strong>Relay + RAVIN</strong>
-        <p>Relay provides the user-facing knowledge surface; RAVIN retrieves and reasons across authorized Field context.</p>
-      </article>
-      <article class="card">
-        <span>NEXT</span>
-        <strong>Storage</strong>
-        <p>Production persistence and permission-aware adapters.</p>
-      </article>
-      <article class="card">
-        <span>LONG TERM</span>
-        <strong>MCP</strong>
-        <p>Secure external access for ChatGPT and other approved clients.</p>
-      </article>
-    </section>
+      <canvas id="graph" aria-label="Interactive knowledge graph"></canvas>
 
-    <section class="pipeline">
-      <p class="eyebrow">ARCHITECTURE</p>
-      <div class="flow">
-        <div>Relay</div><b>→</b><div>Field Engine</div><b>→</b><div>RAVIN</div><b>+</b><div>Future Apps</div>
+      <div class="graph-help">
+        <span>Drag to pan</span>
+        <span>Scroll to zoom</span>
+        <span>Click a node to inspect</span>
       </div>
-    </section>
+    </main>
 
-    <footer>Resonant Field · Internal development explorer</footer>
-  </main>
+    <aside id="inspector" class="inspector panel">
+      <div class="empty-state">
+        <div class="empty-icon">✦</div>
+        <h2>Select a node</h2>
+        <p>Click anything in the Field to inspect its source, relationships, and AI-access status.</p>
+      </div>
+    </aside>
+  </div>
+
   <script src="./app.js"></script>
 </body>
 </html>
