@@ -20,6 +20,7 @@
 
       <div class="top-actions">
         <span class="status"><i></i> Interactive prototype</span>
+        <button id="addNode" class="repo-link action-button">+ Add node</button>
         <a class="repo-link" href="https://github.com/Link9060/Resonant-Field">GitHub ↗</a>
       </div>
     </header>
@@ -103,6 +104,56 @@
       </div>
     </aside>
   </div>
+
+  <dialog id="nodeDialog" class="node-dialog">
+    <form id="nodeForm" method="dialog">
+      <div class="dialog-head">
+        <div>
+          <p class="section-label">LOCAL FIELD NODE</p>
+          <h2>Add something to the Field</h2>
+        </div>
+        <button type="button" id="closeDialog" class="dialog-close" aria-label="Close">×</button>
+      </div>
+
+      <label>
+        <span>Title</span>
+        <input id="nodeTitle" name="title" maxlength="120" required placeholder="e.g. Nova prototype notes" />
+      </label>
+
+      <div class="form-row">
+        <label>
+          <span>Type</span>
+          <select id="nodeType" name="type">
+            <option value="note">Note</option>
+            <option value="project">Project</option>
+            <option value="todo">Todo</option>
+            <option value="file">File reference</option>
+            <option value="memory">Memory</option>
+          </select>
+        </label>
+        <label>
+          <span>Cluster</span>
+          <input id="nodeCluster" name="cluster" maxlength="60" placeholder="e.g. Nova" />
+        </label>
+      </div>
+
+      <label>
+        <span>Context</span>
+        <textarea id="nodeSummary" name="summary" maxlength="500" rows="5" placeholder="What should Field/RAVIN know about this?"></textarea>
+      </label>
+
+      <label class="checkbox-row">
+        <input id="nodeRavin" type="checkbox" checked />
+        <span>Allow this node in the RAVIN context demo</span>
+      </label>
+
+      <div class="dialog-actions">
+        <button type="button" id="cancelDialog" class="secondary-action">Cancel</button>
+        <button type="submit" class="primary-action">Add to Field</button>
+      </div>
+      <p class="dialog-footnote">Prototype only: custom nodes are stored locally in this browser. Production Field storage is being built separately with Supabase + RLS.</p>
+    </form>
+  </dialog>
 
   <script src="./app.js"></script>
 </body>
