@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://resonant.ai/schemas/field/knowledge-node.schema.json",
+  "title": "KnowledgeNode",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "ownerId", "type", "title", "source", "metadata", "createdAt", "updatedAt"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "ownerId": { "type": "string", "minLength": 1 },
+    "type": { "enum": ["note", "file", "todo", "calendar_event", "project", "ravin_conversation", "chat", "memory", "link", "other"] },
+    "title": { "type": "string" },
+    "searchableText": { "type": "string" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["product", "sourceId"],
+      "properties": {
+        "product": { "type": "string", "minLength": 1 },
+        "sourceId": { "type": "string", "minLength": 1 },
+        "sourceType": { "type": "string" }
+      }
+    },
+    "metadata": { "type": "object" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" }
+  }
+}
