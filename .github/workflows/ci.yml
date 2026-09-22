@@ -29,3 +29,6 @@ jobs:
 
       - name: Build packages
         run: npm run build
+
+      - name: Run core behavior tests
+        run: npm test
