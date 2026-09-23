@@ -4,6 +4,7 @@ export const KNOWLEDGE_NODE_TYPES = [
   'todo',
   'calendar_event',
   'project',
+  'collection',
   'ravin_conversation',
   'chat',
   'memory',
