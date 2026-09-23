@@ -1,16 +1,61 @@
 const canvas = document.querySelector('#graph');
 const ctx = canvas.getContext('2d');
 
-const palette = {
-  project: '#d8d8dc',
-  note: '#bdbdc4',
-  file: '#aeb2bb',
-  todo: '#c8c4bb',
-  calendar_event: '#b7c1bc',
-  ravin_conversation: '#c7becd',
-  memory: '#bfb8c0',
-  chat: '#aeb1b7'
+const paletteDark = {
+  project: '#f1f1f3',
+  note: '#9b8cff',
+  file: '#6daeea',
+  todo: '#d9a15b',
+  calendar_event: '#6bcaa6',
+  ravin_conversation: '#bd7edb',
+  memory: '#d779a2',
+  chat: '#8f98a8'
 };
+
+const paletteLight = {
+  project: '#171719',
+  note: '#6757d8',
+  file: '#2d75b8',
+  todo: '#a86614',
+  calendar_event: '#287f63',
+  ravin_conversation: '#8e50ad',
+  memory: '#a53f6a',
+  chat: '#59616c'
+};
+
+function isDarkTheme() {
+  return document.documentElement.classList.contains('dark');
+}
+
+function palette() {
+  return isDarkTheme() ? paletteDark : paletteLight;
+}
+
+function graphTheme() {
+  return isDarkTheme()
+    ? {
+        edge: [166, 166, 174],
+        edgeSelected: 'rgba(238,238,242,.42)',
+        grid: 'rgba(255,255,255,.027)',
+        label: '#77777f',
+        hubLabel: '#c7c7cd',
+        activeLabel: '#f5f5f6',
+        ring: 'rgba(255,255,255,.10)',
+        ringSelected: 'rgba(255,255,255,.52)',
+        selectedNode: '#f5f5f6'
+      }
+    : {
+        edge: [70, 70, 78],
+        edgeSelected: 'rgba(25,25,28,.38)',
+        grid: 'rgba(17,17,17,.045)',
+        label: '#74747a',
+        hubLabel: '#3d3d42',
+        activeLabel: '#111113',
+        ring: 'rgba(17,17,17,.11)',
+        ringSelected: 'rgba(17,17,17,.44)',
+        selectedNode: '#111113'
+      };
+}
 
 const labels = {
   project: 'Projects',
@@ -141,13 +186,14 @@ function setupFilters() {
     const button = document.createElement('button');
     button.className = 'filter active';
     button.dataset.type = type;
-    button.innerHTML = `<span class="filter-left"><i class="dot" style="color:${palette[type]};background:${palette[type]}"></i>${labels[type]}</span><span class="filter-count">${count}</span>`;
+    button.innerHTML = `<span class="filter-left"><i class="dot"></i>${labels[type]}</span><span class="filter-count">${count}</span>`;
+    button.dataset.type = type;
     button.addEventListener('click', () => {
       if (state.filters.has(type)) state.filters.delete(type); else state.filters.add(type);
       button.classList.toggle('active', state.filters.has(type));
       if (state.selected && !isVisible(getNode(state.selected))) selectNode(null);
       updateStats();
-      render();
+      fitGraph();
     });
     holder.appendChild(button);
   }
@@ -242,6 +288,7 @@ function render() {
   ctx.clearRect(0,0,width,height);
   drawBackdrop();
   const visible = new Set(visibleNodes().map(n => n.id));
+  const colors = graphTheme();
 
   for (const edge of edges) {
     if (!visible.has(edge.a) || !visible.has(edge.b)) continue;
@@ -251,8 +298,10 @@ function render() {
     ctx.beginPath();
     ctx.moveTo(a.x,a.y);
     ctx.lineTo(b.x,b.y);
-    ctx.lineWidth = selectedEdge ? 1.35 : .65;
-    ctx.strokeStyle = selectedEdge ? 'rgba(220,220,235,.42)' : `rgba(154,154,180,${.08 + edge.strength*.1})`;
+    ctx.lineWidth = selectedEdge ? 1.25 : .62;
+    ctx.strokeStyle = selectedEdge
+      ? colors.edgeSelected
+      : `rgba(${colors.edge[0]},${colors.edge[1]},${colors.edge[2]},${.075 + edge.strength*.085})`;
     ctx.stroke();
   }
 
@@ -263,9 +312,11 @@ function drawBackdrop() {
   const step = 42 * Math.max(.65, state.scale);
   const ox = ((width/2 + state.offsetX) % step + step) % step;
   const oy = ((height/2 + state.offsetY) % step + step) % step;
-  ctx.fillStyle = 'rgba(255,255,255,.026)';
+  ctx.fillStyle = graphTheme().grid;
   for (let x=ox; x<width; x+=step) for (let y=oy; y<height; y+=step) {
-    ctx.beginPath(); ctx.arc(x,y,.65,0,Math.PI*2); ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x,y,.6,0,Math.PI*2);
+    ctx.fill();
   }
 }
 
@@ -274,41 +325,29 @@ function drawNode(node) {
   const r = nodeRadius(node) * Math.max(.8, Math.min(1.25,state.scale));
   const selected = state.selected === node.id;
   const hovered = state.hovered === node.id;
-  const color = palette[node.type] || '#ddd';
-
-  if (selected || hovered || node.type === 'project') {
-    const glow = ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,r*4.5);
-    glow.addColorStop(0, hexToRgba(color, selected ? .24 : .14));
-    glow.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = glow;
-    ctx.beginPath(); ctx.arc(p.x,p.y,r*4.5,0,Math.PI*2); ctx.fill();
-  }
+  const colors = graphTheme();
+  const nodeColor = palette()[node.type] || (isDarkTheme() ? '#bdbdc4' : '#55555c');
 
   ctx.beginPath();
   ctx.arc(p.x,p.y,r,0,Math.PI*2);
-  ctx.fillStyle = selected ? '#ffffff' : color;
+  ctx.fillStyle = selected ? colors.selectedNode : nodeColor;
+  ctx.globalAlpha = selected ? 1 : node.type === 'project' ? .96 : .9;
   ctx.fill();
+  ctx.globalAlpha = 1;
 
   ctx.beginPath();
-  ctx.arc(p.x,p.y,r+3,0,Math.PI*2);
-  ctx.strokeStyle = selected ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.08)';
-  ctx.lineWidth = 1;
+  ctx.arc(p.x,p.y,r + (selected ? 4 : 3),0,Math.PI*2);
+  ctx.strokeStyle = selected ? colors.ringSelected : colors.ring;
+  ctx.lineWidth = selected ? 1.15 : .85;
   ctx.stroke();
 
   if (state.scale > .62 || node.type === 'project' || selected || hovered) {
     ctx.font = node.type === 'project' ? '600 11px Inter, system-ui' : '500 9px Inter, system-ui';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillStyle = selected || hovered ? '#f3f3f6' : node.type === 'project' ? '#c8c8d0' : '#777783';
+    ctx.fillStyle = selected || hovered ? colors.activeLabel : node.type === 'project' ? colors.hubLabel : colors.label;
     ctx.fillText(node.title, p.x, p.y + r + 7);
   }
-}
-
-function hexToRgba(hex, alpha) {
-  const value = hex.replace('#','');
-  const bigint = parseInt(value,16);
-  const r=(bigint>>16)&255, g=(bigint>>8)&255, b=bigint&255;
-  return `rgba(${r},${g},${b},${alpha})`;
 }
 
 function hitTest(x,y) {
@@ -425,6 +464,32 @@ function escapeHtml(value) {
   return value.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+function syncFilterColors() {
+  const colors = palette();
+  document.querySelectorAll('.filter').forEach(button => {
+    const type = button.dataset.type;
+    const dot = button.querySelector('.dot');
+    if (dot && colors[type]) dot.style.background = colors[type];
+  });
+}
+
+function applyTheme(theme) {
+  const dark = theme === 'dark';
+  document.documentElement.classList.toggle('dark', dark);
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  try {
+    localStorage.setItem('resonant-theme', dark ? 'dark' : 'light');
+    localStorage.setItem('relay-theme', dark ? 'dark' : 'light');
+  } catch {}
+  const toggle = document.querySelector('#themeToggle');
+  if (toggle) {
+    toggle.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
+    toggle.setAttribute('title', dark ? 'Light mode' : 'Dark mode');
+  }
+  syncFilterColors();
+  render();
+}
+
 function setupFilterCounts() {
   document.querySelectorAll('.filter').forEach(button => {
     const type = button.dataset.type;
@@ -447,12 +512,41 @@ function updateStats() {
     state.view === 'recent' ? 'Recently active knowledge' : 'Everything connected';
 }
 
-function centerGraph() {
-  state.scale = 1;
-  state.offsetX = 0;
-  state.offsetY = 0;
+function fitGraph() {
+  const visible = visibleNodes();
+  if (!visible.length || width <= 0 || height <= 0) {
+    state.scale = 1;
+    state.offsetX = 0;
+    state.offsetY = 0;
+    updateZoom();
+    render();
+    return;
+  }
+
+  const xs = visible.map(node => node.x);
+  const ys = visible.map(node => node.y);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+  const spanX = Math.max(120, maxX - minX);
+  const spanY = Math.max(120, maxY - minY);
+  const paddingX = Math.min(150, Math.max(72, width * .11));
+  const paddingY = Math.min(120, Math.max(70, height * .12));
+  const scaleX = Math.max(.1, (width - paddingX * 2) / spanX);
+  const scaleY = Math.max(.1, (height - paddingY * 2) / spanY);
+
+  state.scale = Math.max(.5, Math.min(1.45, Math.min(scaleX, scaleY)));
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
+  state.offsetX = -centerX * state.scale;
+  state.offsetY = -centerY * state.scale + 8;
   updateZoom();
   render();
+}
+
+function centerGraph() {
+  fitGraph();
 }
 
 function updateZoom() {
@@ -503,6 +597,10 @@ function closeNodeDialog() {
   nodeDialog.close();
 }
 
+document.querySelector('#themeToggle').addEventListener('click', () => {
+  applyTheme(isDarkTheme() ? 'light' : 'dark');
+});
+
 document.querySelector('#addNode').addEventListener('click', openNodeDialog);
 document.querySelector('#closeDialog').addEventListener('click', closeNodeDialog);
 document.querySelector('#cancelDialog').addEventListener('click', closeNodeDialog);
@@ -550,7 +648,8 @@ nodeDialog.addEventListener('click', event => {
 document.querySelector('#searchInput').addEventListener('input', e => {
   state.query = e.target.value.trim();
   if (state.selected && !isVisible(getNode(state.selected))) selectNode(null);
-  updateStats(); render();
+  updateStats();
+  render();
 });
 
 document.addEventListener('keydown', e => {
@@ -564,7 +663,8 @@ document.addEventListener('keydown', e => {
 document.querySelector('#resetFilters').addEventListener('click', () => {
   state.filters = new Set(Object.keys(labels));
   document.querySelectorAll('.filter').forEach(b=>b.classList.add('active'));
-  updateStats(); render();
+  updateStats();
+  fitGraph();
 });
 
 document.querySelectorAll('.view-button').forEach(button => {
@@ -572,7 +672,8 @@ document.querySelectorAll('.view-button').forEach(button => {
     state.view = button.dataset.view;
     document.querySelectorAll('.view-button').forEach(b=>b.classList.toggle('active',b===button));
     if (state.selected && !isVisible(getNode(state.selected))) selectNode(null);
-    updateStats(); render();
+    updateStats();
+    fitGraph();
   });
 });
 
@@ -625,6 +726,8 @@ canvas.addEventListener('mouseleave', () => { if (!state.dragging) { state.hover
 
 setupFilters();
 setupFilterCounts();
+syncFilterColors();
+applyTheme(isDarkTheme() ? 'dark' : 'light');
 updateStats();
 updateZoom();
 new ResizeObserver(resize).observe(canvas);
