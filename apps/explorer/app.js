@@ -695,13 +695,13 @@ function selectNode(id) {
       };
     });
     if (childEdges.length) {
-      fitGraph();
       startRevealAnimation({
         mode: 'cluster-expand',
         duration: Math.max(700, childEdges.length * 32 + 560),
         nodes: childNodes,
         edges: childEdgePlan,
       });
+      fitGraph();
     }
   }
 
