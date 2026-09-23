@@ -245,7 +245,9 @@ kbd {
   color: var(--ink-muted);
 }
 .filter:hover { background: var(--hover); color: var(--ink); }
-.filter.active { background: var(--active); color: var(--ink); }
+.filter.active { background: transparent; color: var(--ink-muted); }
+.filter:not(.active) { opacity: .34; }
+.filter:not(.active):hover { opacity: .7; }
 .filter-left { display: flex; align-items: center; gap: 8px; font-size: 10px; }
 .dot { width: 5px; height: 5px; border-radius: 50%; box-shadow: none !important; }
 .filter-count { color: var(--ink-faint); font-size: 8.5px; }
