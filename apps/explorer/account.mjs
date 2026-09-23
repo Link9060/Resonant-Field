@@ -643,8 +643,8 @@ async function buildMyField() {
 
   const plan = createBuildPlan(Field.nodes, Field.edges);
   buildOverlay.classList.add('releasing');
-  Field.fitGraph();
   Field.startRevealAnimation(plan);
+  Field.fitGraph();
 
   await supabase.from('field_user_state').upsert({
     user_id: currentUser.id,
@@ -741,13 +741,14 @@ async function syncFieldNow(options = {}) {
 
     Field.nodes.splice(0, Field.nodes.length, ...prepared.nodes);
     Field.edges.splice(0, Field.edges.length, ...prepared.edges);
-    resetExplorerForDataset({ preserve: true });
 
     if (newNodeIds.size || newEdgeIds.size) {
       const plan = createSyncPlan(prepared.nodes, prepared.edges, oldNodeIds, newNodeIds, newEdgeIds);
       Field.startRevealAnimation(plan);
+      resetExplorerForDataset({ preserve: true });
       showSyncFlash(`${newNodeIds.size} new ${newNodeIds.size === 1 ? 'node' : 'nodes'} · ${newEdgeIds.size} new ${newEdgeIds.size === 1 ? 'link' : 'links'}`);
     } else {
+      resetExplorerForDataset({ preserve: true });
       showSyncFlash('Field is up to date');
     }
 
