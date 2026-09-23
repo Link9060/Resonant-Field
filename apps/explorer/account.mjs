@@ -4,6 +4,8 @@ const SUPABASE_URL = 'https://cnorozrjugxpanpfmssa.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_yVNPiB7opT0WRvBfKTZ2BA_s5bOQLRg';
 const RELAY_CONNECT_URL = 'https://resonantrelay.org/connect-field/';
 const PAGE_SIZE = 1000;
+const TODO_LOD_SCALE = 1.65;
+const BUILD_LAYOUT_VERSION = 2;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
@@ -30,14 +32,24 @@ const connectRelayInline = document.querySelector('#connectRelayInline');
 const signOutField = document.querySelector('#signOutField');
 const nodeDialogMode = document.querySelector('#nodeDialogMode');
 const nodeDialogFootnote = document.querySelector('#nodeDialogFootnote');
+const buildOverlay = document.querySelector('#buildFieldOverlay');
+const buildButton = document.querySelector('#buildFieldButton');
+const buildMeta = document.querySelector('#buildFieldMeta');
+const syncButton = document.querySelector('#syncField');
 
 let liveMode = false;
 let currentUser = null;
+let currentUserState = null;
 let loadingAccount = false;
+let syncing = false;
 
 function clone(value) {
   if (typeof structuredClone === 'function') return structuredClone(value);
   return JSON.parse(JSON.stringify(value));
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function connectRelay() {
@@ -61,6 +73,14 @@ signOutField.addEventListener('click', async () => {
   accountButton.setAttribute('aria-expanded', 'false');
   await supabase.auth.signOut({ scope: 'local' });
   restoreDemo();
+});
+
+syncButton.addEventListener('click', () => {
+  void syncFieldNow();
+});
+
+buildButton.addEventListener('click', () => {
+  void buildMyField();
 });
 
 document.addEventListener('click', event => {
@@ -115,87 +135,356 @@ async function optionalFetch(table, columns) {
   }
 }
 
-async function loadLiveAccount(user) {
-  if (loadingAccount) return;
+async function fetchUserState(userId) {
+  const { data, error } = await supabase
+    .from('field_user_state')
+    .select('user_id,built_at,last_synced_at,layout_version,updated_at')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data || null;
+}
+
+async function loadRawFieldData() {
+  const [rawNodes, rawEdges, rawContent, rawFiles, rawPreferences] = await Promise.all([
+    fetchAll('field_nodes', 'id,user_id,type,title,searchable_text,source_product,source_id,source_type,metadata,created_at,updated_at', 'updated_at'),
+    fetchAll('field_edges', 'id,user_id,source_node_id,target_node_id,relation_type,strength,origin,metadata,created_at,updated_at', 'updated_at'),
+    optionalFetch('field_node_content', 'node_id,user_id,content_kind,text_content,structured_content,mime_type,preview_bucket_id,preview_object_path,preview_alt,updated_at'),
+    optionalFetch('field_files', 'id,user_id,node_id,bucket_id,object_path,file_name,mime_type,size_bytes,extraction_status,created_at,updated_at'),
+    optionalFetch('field_source_preferences', 'source_product,source_type,indexed,ravin_read,external_ai_read,allow_writeback'),
+  ]);
+
+  return { rawNodes, rawEdges, rawContent, rawFiles, rawPreferences };
+}
+
+async function loadLiveAccount(user, options = {}) {
+  if (loadingAccount) return null;
   loadingAccount = true;
-  setConnectionState('SYNCING');
+  setConnectionState(options.quiet ? 'LIVE' : 'SYNCING');
 
   try {
-    const [rawNodes, rawEdges, rawContent, rawFiles, rawPreferences] = await Promise.all([
-      fetchAll('field_nodes', 'id,user_id,type,title,searchable_text,source_product,source_id,source_type,metadata,created_at,updated_at', 'updated_at'),
-      fetchAll('field_edges', 'id,user_id,source_node_id,target_node_id,relation_type,strength,origin,metadata,created_at,updated_at', 'updated_at'),
-      optionalFetch('field_node_content', 'node_id,user_id,content_kind,text_content,structured_content,mime_type,preview_bucket_id,preview_object_path,preview_alt,updated_at'),
-      optionalFetch('field_files', 'id,user_id,node_id,bucket_id,object_path,file_name,mime_type,size_bytes,extraction_status,created_at,updated_at'),
-      optionalFetch('field_source_preferences', 'source_product,source_type,indexed,ravin_read,external_ai_read,allow_writeback'),
+    const [raw, userState] = await Promise.all([
+      loadRawFieldData(),
+      fetchUserState(user.id),
     ]);
 
-    const contentByNode = new Map(rawContent.map(row => [row.node_id, row]));
-    const fileByNode = new Map(rawFiles.map(row => [row.node_id, row]));
-    const preferenceBySource = new Map(rawPreferences.map(row => [`${row.source_product}:${row.source_type}`, row]));
-    const rawNodeById = new Map(rawNodes.map(row => [row.id, row]));
-    const parentByNode = new Map();
+    const prepared = await prepareDataset(raw);
 
-    for (const edge of rawEdges) {
-      if (edge.relation_type !== 'contains') continue;
-      const parent = rawNodeById.get(edge.source_node_id);
-      if (parent?.type === 'collection') parentByNode.set(edge.target_node_id, parent.title);
-    }
-
-    const positions = layoutLiveNodes(rawNodes, rawEdges);
-    const prepared = rawNodes.map(row => {
-      const content = contentByNode.get(row.id);
-      const file = fileByNode.get(row.id);
-      const preference = preferenceBySource.get(`${row.source_product}:${row.source_type}`);
-      const position = positions.get(row.id) || { x: 0, y: 0 };
-      const cluster = parentByNode.get(row.id) || collectionName(row) || sourceName(row);
-      const node = {
-        id: row.id,
-        type: Field.labels[row.type] ? row.type : 'other',
-        title: row.title || 'Untitled',
-        summary: summarize(row.searchable_text) || defaultSummary(row),
-        cluster,
-        source: sourceName(row),
-        ai: preference?.ravin_read === true,
-        recent: freshness(row.updated_at),
-        x: position.x,
-        y: position.y,
-        live: true,
-        sourceProduct: row.source_product,
-        sourceType: row.source_type,
-        rawMetadata: row.metadata || {},
-      };
-
-      applyContent(node, content, file);
-      return node;
-    });
-
-    await attachSignedPreviews(prepared, rawContent, rawFiles);
-
-    const preparedEdges = rawEdges
-      .filter(edge => rawNodeById.has(edge.source_node_id) && rawNodeById.has(edge.target_node_id))
-      .map(edge => ({
-        id: edge.id,
-        a: edge.source_node_id,
-        b: edge.target_node_id,
-        strength: Number(edge.strength ?? .5),
-        type: edge.relation_type || 'related',
-        origin: edge.origin || 'system',
-        live: true,
-      }));
-
-    Field.nodes.splice(0, Field.nodes.length, ...prepared);
-    Field.edges.splice(0, Field.edges.length, ...preparedEdges);
+    Field.nodes.splice(0, Field.nodes.length, ...prepared.nodes);
+    Field.edges.splice(0, Field.edges.length, ...prepared.edges);
     currentUser = user;
+    currentUserState = userState;
     liveMode = true;
 
-    resetExplorerForDataset();
-    setLiveUi(user, prepared.length, preparedEdges.length);
+    resetExplorerForDataset({ preserve: Boolean(options.preserve) });
+    setLiveUi(user, prepared.nodes.length, prepared.edges.length, Boolean(userState?.built_at));
+
+    if (!userState?.built_at) {
+      showBuildExperience(prepared);
+    } else {
+      hideBuildExperience();
+      syncButton.hidden = false;
+    }
+
+    return { ...prepared, userState };
   } catch (error) {
     console.error('Field live account load failed', error);
     showConnectionError('Field connected your account, but could not load the graph.');
+    return null;
   } finally {
     loadingAccount = false;
   }
+}
+
+async function prepareDataset({ rawNodes, rawEdges, rawContent, rawFiles, rawPreferences }) {
+  const contentByNode = new Map(rawContent.map(row => [row.node_id, row]));
+  const fileByNode = new Map(rawFiles.map(row => [row.node_id, row]));
+  const preferenceBySource = new Map(rawPreferences.map(row => [`${row.source_product}:${row.source_type}`, row]));
+  const rawNodeById = new Map(rawNodes.map(row => [row.id, row]));
+
+  const nodes = rawNodes.map(row => {
+    const content = contentByNode.get(row.id);
+    const file = fileByNode.get(row.id);
+    const preference = preferenceBySource.get(`${row.source_product}:${row.source_type}`);
+    const node = {
+      id: row.id,
+      type: Field.labels[row.type] ? row.type : 'other',
+      title: row.title || 'Untitled',
+      summary: summarize(row.searchable_text) || defaultSummary(row),
+      cluster: collectionName(row) || sourceName(row),
+      source: sourceName(row),
+      ai: preference?.ravin_read === true,
+      recent: freshness(row.updated_at),
+      x: 0,
+      y: 0,
+      live: true,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      sourceProduct: row.source_product,
+      sourceType: row.source_type,
+      rawMetadata: row.metadata || {},
+    };
+
+    applyContent(node, content, file);
+    return node;
+  });
+
+  let edges = rawEdges
+    .filter(edge => rawNodeById.has(edge.source_node_id) && rawNodeById.has(edge.target_node_id))
+    .map(edge => ({
+      id: edge.id,
+      a: edge.source_node_id,
+      b: edge.target_node_id,
+      strength: Number(edge.strength ?? .5),
+      type: edge.relation_type || 'related',
+      origin: edge.origin || 'system',
+      createdAt: edge.created_at,
+      live: true,
+    }));
+
+  const todoClusters = buildTodoMapClusters(nodes, edges);
+  nodes.push(...todoClusters.nodes);
+  edges = todoClusters.edges;
+
+  assignParents(nodes, edges);
+  layoutPreparedNodes(nodes, edges);
+  await attachSignedPreviews(nodes, rawContent, rawFiles);
+
+  return { nodes, edges, rawNodes, rawEdges };
+}
+
+function buildTodoMapClusters(nodes, edges) {
+  const todoHub = nodes.find(node =>
+    node.type === 'collection' &&
+    (/todo/i.test(node.title) || /todo/i.test(node.sourceType || '') || /todo/i.test(node.rawMetadata?.collection || ''))
+  );
+
+  if (!todoHub) return { nodes: [], edges };
+
+  const directTodoEdges = edges.filter(edge => edge.type === 'contains' && edge.a === todoHub.id);
+  const todoIds = new Set(
+    directTodoEdges
+      .map(edge => edge.b)
+      .filter(id => nodes.find(node => node.id === id)?.type === 'todo')
+  );
+
+  if (todoIds.size < 16) return { nodes: [], edges };
+
+  const groups = new Map();
+  for (const id of todoIds) {
+    const node = nodes.find(item => item.id === id);
+    if (!node) continue;
+    const key = todoGroup(node);
+    const list = groups.get(key) || [];
+    list.push(node);
+    groups.set(key, list);
+  }
+
+  const virtualNodes = [];
+  const virtualEdges = [];
+  const groupOrder = ['overdue', 'today', 'soon', 'later', 'unscheduled', 'completed'];
+
+  groupOrder.forEach((key, groupIndex) => {
+    const children = groups.get(key) || [];
+    if (!children.length) return;
+
+    const id = `virtual:todos:${key}`;
+    const title = todoGroupTitle(key);
+    const virtualNode = {
+      id,
+      type: 'collection',
+      title,
+      summary: `${children.length} ${children.length === 1 ? 'task' : 'tasks'}`,
+      cluster: todoHub.title,
+      source: 'Field',
+      ai: false,
+      recent: Math.max(...children.map(child => child.recent || 0)),
+      x: 0,
+      y: 0,
+      live: true,
+      virtual: true,
+      virtualCount: children.length,
+      sourceProduct: 'field-ui',
+      sourceType: 'virtual_cluster',
+      groupIndex,
+    };
+    virtualNodes.push(virtualNode);
+
+    virtualEdges.push({
+      id: `virtual-edge:${todoHub.id}:${id}`,
+      a: todoHub.id,
+      b: id,
+      strength: .9,
+      type: 'contains',
+      origin: 'field-ui',
+      virtual: true,
+      live: true,
+    });
+
+    children.forEach((child, index) => {
+      child.parentId = id;
+      child.lodMinScale = TODO_LOD_SCALE;
+      child.cluster = title;
+      child.groupIndex = index;
+      virtualEdges.push({
+        id: `virtual-edge:${id}:${child.id}`,
+        a: id,
+        b: child.id,
+        strength: .82,
+        type: 'contains',
+        origin: 'field-ui',
+        virtual: true,
+        live: true,
+      });
+    });
+  });
+
+  const filtered = edges.filter(edge => !(edge.type === 'contains' && edge.a === todoHub.id && todoIds.has(edge.b)));
+  return { nodes: virtualNodes, edges: [...filtered, ...virtualEdges] };
+}
+
+function todoGroup(node) {
+  if (node.completed) return 'completed';
+  const due = parseDateOnly(node.dueOn);
+  if (!due) return 'unscheduled';
+
+  const today = startOfToday();
+  const difference = Math.round((due.getTime() - today.getTime()) / 86_400_000);
+  if (difference < 0) return 'overdue';
+  if (difference === 0) return 'today';
+  if (difference <= 7) return 'soon';
+  return 'later';
+}
+
+function todoGroupTitle(key) {
+  return ({
+    overdue: 'Overdue',
+    today: 'Today',
+    soon: 'Soon',
+    later: 'Later',
+    unscheduled: 'No date',
+    completed: 'Completed',
+  })[key] || 'Tasks';
+}
+
+function parseDateOnly(value) {
+  if (!value || /unscheduled/i.test(String(value))) return null;
+  const text = String(value).slice(0, 10);
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+  if (!match) return null;
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function startOfToday() {
+  const value = new Date();
+  value.setHours(0, 0, 0, 0);
+  return value;
+}
+
+function assignParents(nodes, edges) {
+  const byId = new Map(nodes.map(node => [node.id, node]));
+  const candidates = new Map();
+
+  for (const edge of edges) {
+    const source = byId.get(edge.a);
+    const target = byId.get(edge.b);
+    if (!source || !target) continue;
+
+    if (edge.type === 'contains') {
+      const score = source.type === 'collection' ? 100 + edge.strength : 70 + edge.strength;
+      const current = candidates.get(target.id);
+      if (!current || score > current.score) candidates.set(target.id, { id: source.id, score });
+    }
+  }
+
+  for (const node of nodes) {
+    if (!node.parentId && candidates.has(node.id)) node.parentId = candidates.get(node.id).id;
+  }
+}
+
+function layoutPreparedNodes(nodes, edges) {
+  const byId = new Map(nodes.map(node => [node.id, node]));
+  const children = new Map();
+
+  for (const edge of edges) {
+    if (edge.type !== 'contains') continue;
+    const list = children.get(edge.a) || [];
+    list.push(edge.b);
+    children.set(edge.a, list);
+  }
+
+  const root = nodes.find(node => node.type === 'collection' && node.sourceType === 'workspace')
+    || nodes.find(node => node.type === 'collection' && /^relay$/i.test(node.title))
+    || nodes.find(node => node.type === 'collection');
+
+  if (root) {
+    root.x = 0;
+    root.y = 0;
+  }
+
+  const rootChildren = (children.get(root?.id) || [])
+    .map(id => byId.get(id))
+    .filter(Boolean)
+    .filter(node => node.type === 'collection')
+    .sort((a, b) => String(a.title).localeCompare(String(b.title)));
+
+  const radius = rootChildren.length <= 4 ? 245 : 285;
+  rootChildren.forEach((node, index) => {
+    const angle = -Math.PI / 2 + index * (Math.PI * 2 / Math.max(rootChildren.length, 1));
+    node.x = Math.cos(angle) * radius;
+    node.y = Math.sin(angle) * radius * .72;
+    layoutChildren(node, children, byId, 0);
+  });
+
+  const positioned = new Set(nodes.filter(node => Number.isFinite(node.x) && Number.isFinite(node.y) && (node.x !== 0 || node.y !== 0 || node.id === root?.id)).map(node => node.id));
+  const remaining = nodes.filter(node => !positioned.has(node.id));
+
+  remaining.forEach((node, index) => {
+    const center = typeCenter(node.type);
+    const angle = index * 2.399963229728653;
+    const distance = 55 + Math.sqrt(index + 1) * 12;
+    node.x = center.x + Math.cos(angle) * distance;
+    node.y = center.y + Math.sin(angle) * distance;
+  });
+}
+
+function layoutChildren(parent, children, byId, depth) {
+  const ids = children.get(parent.id) || [];
+  const childNodes = ids.map(id => byId.get(id)).filter(Boolean);
+  if (!childNodes.length) return;
+
+  const virtual = childNodes.filter(node => node.virtual);
+  const normal = childNodes.filter(node => !node.virtual);
+
+  if (virtual.length) {
+    const clusterRadius = 88;
+    virtual.forEach((node, index) => {
+      const angle = -Math.PI / 2 + index * (Math.PI * 2 / virtual.length);
+      node.x = parent.x + Math.cos(angle) * clusterRadius;
+      node.y = parent.y + Math.sin(angle) * clusterRadius;
+      layoutChildren(node, children, byId, depth + 1);
+    });
+  }
+
+  const leafRadiusBase = depth > 0 ? 58 : 78;
+  normal.forEach((node, index) => {
+    const angle = index * 2.399963229728653;
+    const distance = leafRadiusBase + Math.sqrt(index + 1) * (depth > 0 ? 10 : 13);
+    node.x = parent.x + Math.cos(angle) * distance;
+    node.y = parent.y + Math.sin(angle) * distance;
+    layoutChildren(node, children, byId, depth + 1);
+  });
+}
+
+function typeCenter(type) {
+  if (type === 'note') return { x: -260, y: -120 };
+  if (type === 'todo') return { x: 270, y: -90 };
+  if (type === 'file') return { x: -250, y: 190 };
+  if (type === 'calendar_event') return { x: 275, y: 190 };
+  if (type === 'ravin_conversation' || type === 'memory') return { x: 0, y: -245 };
+  return { x: 0, y: 240 };
 }
 
 function applyContent(node, content, file) {
@@ -235,6 +524,7 @@ async function attachSignedPreviews(prepared, rawContent, rawFiles) {
   const fileByNode = new Map(rawFiles.map(row => [row.node_id, row]));
 
   await Promise.all(prepared.map(async node => {
+    if (node.virtual) return;
     const content = contentByNode.get(node.id);
     const file = fileByNode.get(node.id);
     const mime = String(file?.mime_type || content?.mime_type || '');
@@ -251,83 +541,6 @@ async function attachSignedPreviews(prepared, rawContent, rawFiles) {
       node.previewAlt = content?.preview_alt || node.title;
     }
   }));
-}
-
-function layoutLiveNodes(rawNodes, rawEdges) {
-  const result = new Map();
-  const byId = new Map(rawNodes.map(row => [row.id, row]));
-  const collectionChildren = new Map();
-
-  for (const edge of rawEdges) {
-    if (edge.relation_type !== 'contains') continue;
-    const parent = byId.get(edge.source_node_id);
-    if (parent?.type !== 'collection') continue;
-    const list = collectionChildren.get(parent.id) || [];
-    list.push(edge.target_node_id);
-    collectionChildren.set(parent.id, list);
-  }
-
-  const workspace = rawNodes.find(row => row.type === 'collection' && row.source_type === 'workspace');
-  if (workspace) result.set(workspace.id, { x: 0, y: 0 });
-
-  const collections = rawNodes
-    .filter(row => row.type === 'collection' && row.id !== workspace?.id)
-    .sort((a, b) => String(a.title).localeCompare(String(b.title)));
-
-  const collectionCenters = [
-    { x: -280, y: -150 },
-    { x: 280, y: -150 },
-    { x: -280, y: 170 },
-    { x: 280, y: 170 },
-    { x: 0, y: -255 },
-    { x: 0, y: 260 },
-  ];
-
-  collections.forEach((collection, index) => {
-    const base = collectionCenters[index] || ringPoint(index - collectionCenters.length, 190 + 28 * Math.floor(index / 6));
-    result.set(collection.id, base);
-
-    const children = (collectionChildren.get(collection.id) || [])
-      .map(id => byId.get(id))
-      .filter(Boolean)
-      .sort((a, b) => String(a.updated_at).localeCompare(String(b.updated_at)));
-
-    children.forEach((child, childIndex) => {
-      const angle = childIndex * 2.399963229728653;
-      const radius = 58 + Math.sqrt(childIndex + 1) * 12.5;
-      result.set(child.id, {
-        x: base.x + Math.cos(angle) * radius,
-        y: base.y + Math.sin(angle) * radius,
-      });
-    });
-  });
-
-  const remaining = rawNodes.filter(row => !result.has(row.id));
-  remaining.forEach((row, index) => {
-    const center = typeCenter(row.type);
-    const angle = index * 2.399963229728653;
-    const radius = 48 + Math.sqrt(index + 1) * 11;
-    result.set(row.id, {
-      x: center.x + Math.cos(angle) * radius,
-      y: center.y + Math.sin(angle) * radius,
-    });
-  });
-
-  return result;
-}
-
-function typeCenter(type) {
-  if (type === 'note') return { x: -260, y: -110 };
-  if (type === 'todo') return { x: 270, y: -80 };
-  if (type === 'file') return { x: -250, y: 180 };
-  if (type === 'calendar_event') return { x: 275, y: 180 };
-  if (type === 'ravin_conversation' || type === 'memory') return { x: 0, y: -230 };
-  return { x: 0, y: 235 };
-}
-
-function ringPoint(index, radius) {
-  const angle = index * 2.399963229728653;
-  return { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
 }
 
 function collectionName(row) {
@@ -379,30 +592,269 @@ function formatBytes(value) {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function resetExplorerForDataset() {
-  Field.state.selected = null;
+function resetExplorerForDataset({ preserve = false } = {}) {
+  const selected = preserve ? Field.state.selected : null;
+  const query = preserve ? Field.state.query : '';
+  const view = preserve ? Field.state.view : 'all';
+
+  Field.state.selected = selected && Field.getNode(selected) ? selected : null;
   Field.state.hovered = null;
-  Field.state.query = '';
-  Field.state.view = 'all';
+  Field.state.query = query;
+  Field.state.view = view;
   Field.state.filters = new Set(Object.keys(Field.labels));
 
-  document.querySelector('#searchInput').value = '';
+  document.querySelector('#searchInput').value = query;
   document.querySelector('#filters').innerHTML = '';
   document.querySelectorAll('.view-button').forEach(button => {
-    button.classList.toggle('active', button.dataset.view === 'all');
+    button.classList.toggle('active', button.dataset.view === view);
   });
 
   Field.setupFilters();
   Field.setupFilterCounts();
   Field.syncFilterColors();
   Field.updateStats();
-  Field.selectNode(null);
+  if (Field.state.selected) Field.selectNode(Field.state.selected); else Field.selectNode(null);
+  if (!preserve) Field.fitGraph(); else Field.render();
+}
+
+function showBuildExperience(dataset) {
+  syncButton.hidden = true;
+  buildOverlay.hidden = false;
+  buildOverlay.classList.remove('building', 'releasing');
+  buildButton.disabled = false;
+
+  const realNodes = dataset.nodes.filter(node => !node.virtual);
+  const virtualCount = dataset.nodes.length - realNodes.length;
+  buildMeta.textContent = `${realNodes.length} real nodes${virtualCount ? ` · ${virtualCount} map clusters` : ''} ready to organize`;
+}
+
+function hideBuildExperience() {
+  buildOverlay.hidden = true;
+  buildOverlay.classList.remove('building', 'releasing');
+}
+
+async function buildMyField() {
+  if (!liveMode || !currentUser || buildButton.disabled) return;
+  buildButton.disabled = true;
+  buildOverlay.classList.add('building');
+  fieldStatus.textContent = 'BUILDING';
+
+  await sleep(430);
+
+  const plan = createBuildPlan(Field.nodes, Field.edges);
+  buildOverlay.classList.add('releasing');
   Field.fitGraph();
+  Field.startRevealAnimation(plan);
+
+  await supabase.from('field_user_state').upsert({
+    user_id: currentUser.id,
+    built_at: new Date().toISOString(),
+    last_synced_at: new Date().toISOString(),
+    layout_version: BUILD_LAYOUT_VERSION,
+  }, { onConflict: 'user_id' });
+
+  currentUserState = await fetchUserState(currentUser.id);
+
+  await sleep(560);
+  hideBuildExperience();
+  syncButton.hidden = false;
+  fieldStatus.textContent = 'LIVE';
+  showSyncFlash('Field built');
+}
+
+function createBuildPlan(nodes, edges) {
+  const root = nodes.find(node => node.type === 'collection' && node.sourceType === 'workspace')
+    || nodes.find(node => node.type === 'collection' && /^relay$/i.test(node.title))
+    || nodes.find(node => node.type === 'collection');
+
+  const depth = new Map();
+  const parent = new Map();
+  if (root) depth.set(root.id, 0);
+
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const edge of edges.filter(edge => edge.type === 'contains')) {
+      const sourceDepth = depth.get(edge.a);
+      if (sourceDepth == null || depth.has(edge.b)) continue;
+      depth.set(edge.b, sourceDepth + 1);
+      parent.set(edge.b, edge.a);
+      changed = true;
+    }
+  }
+
+  const nodePlan = {};
+  let maxDelay = 0;
+  nodes.forEach((node, index) => {
+    const level = depth.get(node.id) ?? 3;
+    const delay = level * 300 + Math.min(index * 11, 360);
+    maxDelay = Math.max(maxDelay, delay);
+    nodePlan[node.id] = {
+      delay,
+      duration: node.virtual ? 460 : 560,
+      fromId: parent.get(node.id) || (node.id === root?.id ? null : root?.id || null),
+    };
+  });
+
+  const edgePlan = {};
+  edges.forEach((edge, index) => {
+    const childDelay = nodePlan[edge.b]?.delay ?? nodePlan[edge.a]?.delay ?? 0;
+    edgePlan[edge.id] = {
+      delay: Math.max(120, childDelay - 80) + Math.min(index * 3, 90),
+      duration: 440,
+    };
+  });
+
+  return {
+    mode: 'build',
+    duration: maxDelay + 800,
+    nodes: nodePlan,
+    edges: edgePlan,
+  };
+}
+
+async function syncFieldNow(options = {}) {
+  if (!liveMode || !currentUser || syncing) return;
+  syncing = true;
+  syncButton.disabled = true;
+  syncButton.classList.add('syncing');
+  fieldStatus.textContent = 'SYNCING';
+
+  const oldNodeIds = new Set(Field.nodes.map(node => node.id));
+  const oldEdgeIds = new Set(Field.edges.map(edge => edge.id));
+
+  try {
+    // Give semantic Field relationships a chance to catch up before the visual sync.
+    try {
+      await supabase.functions.invoke('field-semantic-refresh', {
+        body: { limit: 20, threshold: .72, neighbors: 8 },
+      });
+    } catch (error) {
+      console.warn('Semantic refresh skipped during Field sync', error);
+    }
+
+    const raw = await loadRawFieldData();
+    const prepared = await prepareDataset(raw);
+
+    const newNodeIds = new Set(prepared.nodes.filter(node => !oldNodeIds.has(node.id)).map(node => node.id));
+    const newEdgeIds = new Set(prepared.edges.filter(edge => !oldEdgeIds.has(edge.id)).map(edge => edge.id));
+
+    Field.nodes.splice(0, Field.nodes.length, ...prepared.nodes);
+    Field.edges.splice(0, Field.edges.length, ...prepared.edges);
+    resetExplorerForDataset({ preserve: true });
+
+    if (newNodeIds.size || newEdgeIds.size) {
+      const plan = createSyncPlan(prepared.nodes, prepared.edges, oldNodeIds, newNodeIds, newEdgeIds);
+      Field.startRevealAnimation(plan);
+      showSyncFlash(`${newNodeIds.size} new ${newNodeIds.size === 1 ? 'node' : 'nodes'} · ${newEdgeIds.size} new ${newEdgeIds.size === 1 ? 'link' : 'links'}`);
+    } else {
+      showSyncFlash('Field is up to date');
+    }
+
+    const syncedAt = new Date().toISOString();
+    await supabase.from('field_user_state').upsert({
+      user_id: currentUser.id,
+      built_at: currentUserState?.built_at || syncedAt,
+      last_synced_at: syncedAt,
+      layout_version: BUILD_LAYOUT_VERSION,
+    }, { onConflict: 'user_id' });
+
+    currentUserState = await fetchUserState(currentUser.id);
+    setLiveUi(currentUser, prepared.nodes.length, prepared.edges.length, true);
+
+    if (options.selectNodeId && Field.getNode(options.selectNodeId)) {
+      setTimeout(() => Field.selectNode(options.selectNodeId), 500);
+    }
+  } catch (error) {
+    console.error('Field sync failed', error);
+    showSyncFlash('Sync failed');
+  } finally {
+    syncing = false;
+    syncButton.disabled = false;
+    syncButton.classList.remove('syncing');
+    fieldStatus.textContent = 'LIVE';
+  }
+}
+
+function createSyncPlan(nodes, edges, oldNodeIds, newNodeIds, newEdgeIds) {
+  const nodesById = new Map(nodes.map(node => [node.id, node]));
+  const nodePlan = {};
+  const sortedNew = [...newNodeIds]
+    .map(id => nodesById.get(id))
+    .filter(Boolean)
+    .sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
+
+  let maxDelay = 0;
+  sortedNew.forEach((node, index) => {
+    const parentId = bestParentForNode(node.id, edges, oldNodeIds, newNodeIds);
+    const delay = 120 + index * 105;
+    maxDelay = Math.max(maxDelay, delay);
+    nodePlan[node.id] = {
+      delay,
+      duration: 560,
+      fromId: parentId,
+    };
+  });
+
+  const edgePlan = {};
+  edges.forEach((edge, index) => {
+    if (!newEdgeIds.has(edge.id) && !newNodeIds.has(edge.a) && !newNodeIds.has(edge.b)) return;
+    const childTiming = nodePlan[edge.b] || nodePlan[edge.a];
+    edgePlan[edge.id] = {
+      delay: Math.max(60, (childTiming?.delay ?? 80) - 45) + Math.min(index * 2, 40),
+      duration: 440,
+    };
+  });
+
+  return {
+    mode: 'sync',
+    duration: Math.max(900, maxDelay + 720),
+    nodes: nodePlan,
+    edges: edgePlan,
+  };
+}
+
+function bestParentForNode(nodeId, edges, oldNodeIds, newNodeIds) {
+  const candidates = [];
+  for (const edge of edges) {
+    if (edge.a !== nodeId && edge.b !== nodeId) continue;
+    const other = edge.a === nodeId ? edge.b : edge.a;
+    if (other === nodeId) continue;
+
+    let score = Number(edge.strength || 0);
+    if (edge.type === 'semantic_related') score += 3;
+    else if (edge.type === 'contains') score += 2;
+    else score += 1;
+
+    if (oldNodeIds.has(other)) score += 2;
+    if (!newNodeIds.has(other)) score += .4;
+    candidates.push({ id: other, score });
+  }
+
+  candidates.sort((a, b) => b.score - a.score);
+  return candidates[0]?.id || Field.nodes.find(node => node.type === 'collection' && node.sourceType === 'workspace')?.id || null;
+}
+
+function showSyncFlash(message) {
+  let flash = document.querySelector('#fieldSyncFlash');
+  if (!flash) {
+    flash = document.createElement('div');
+    flash.id = 'fieldSyncFlash';
+    flash.className = 'sync-flash';
+    document.querySelector('.graph-shell').appendChild(flash);
+  }
+  flash.textContent = message;
+  requestAnimationFrame(() => flash.classList.add('show'));
+  clearTimeout(showSyncFlash.timer);
+  showSyncFlash.timer = setTimeout(() => flash.classList.remove('show'), 2200);
 }
 
 function restoreDemo() {
   liveMode = false;
   currentUser = null;
+  currentUserState = null;
+  syncing = false;
+  Field.stopRevealAnimation();
   Field.nodes.splice(0, Field.nodes.length, ...clone(demoNodes));
   Field.edges.splice(0, Field.edges.length, ...clone(demoEdges));
   resetExplorerForDataset();
@@ -413,17 +865,20 @@ function restoreDemo() {
   accountLabel.textContent = 'Connect Relay';
   accountEmail.textContent = 'Not connected';
   demoBanner.hidden = false;
+  syncButton.hidden = true;
+  hideBuildExperience();
   nodeDialogMode.textContent = 'DEMO FIELD NODE';
   nodeDialogFootnote.textContent = 'Demo nodes stay in this browser until you connect Relay.';
 }
 
-function setLiveUi(user, nodeCount, edgeCount) {
+function setLiveUi(user, nodeCount, edgeCount, built) {
   document.body.classList.add('field-live');
   fieldStatus.textContent = 'LIVE';
   accountButton.classList.add('connected');
   accountLabel.textContent = shortIdentity(user.email);
   accountEmail.textContent = user.email || 'Relay account';
   demoBanner.hidden = true;
+  syncButton.hidden = !built;
   nodeDialogMode.textContent = 'LIVE FIELD NODE';
   nodeDialogFootnote.textContent = 'This node will be stored in your private Field account.';
   document.querySelector('#viewTitle').textContent = `${nodeCount} nodes · ${edgeCount} relationships`;
@@ -431,7 +886,13 @@ function setLiveUi(user, nodeCount, edgeCount) {
 
 function setConnectionState(label) {
   fieldStatus.textContent = label;
-  accountLabel.textContent = label === 'CONNECTING' ? 'Connecting…' : label === 'SYNCING' ? 'Syncing…' : 'Connect Relay';
+  accountLabel.textContent = label === 'CONNECTING'
+    ? 'Connecting…'
+    : label === 'SYNCING'
+      ? 'Syncing…'
+      : currentUser?.email
+        ? shortIdentity(currentUser.email)
+        : 'Connect Relay';
 }
 
 function showConnectionError(message) {
@@ -519,8 +980,7 @@ async function createLiveNode(event) {
   }, { onConflict: 'user_id,source_product,source_type' });
 
   Field.closeNodeDialog();
-  await loadLiveAccount(currentUser);
-  Field.selectNode(node.id);
+  await syncFieldNow({ selectNodeId: node.id });
 }
 
 Field.nodeForm.addEventListener('submit', event => {
