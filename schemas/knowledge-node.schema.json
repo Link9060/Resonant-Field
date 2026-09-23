@@ -8,7 +8,7 @@
   "properties": {
     "id": { "type": "string", "minLength": 1 },
     "ownerId": { "type": "string", "minLength": 1 },
-    "type": { "enum": ["note", "file", "todo", "calendar_event", "project", "ravin_conversation", "chat", "memory", "link", "other"] },
+    "type": { "enum": ["note", "file", "todo", "calendar_event", "project", "collection", "ravin_conversation", "chat", "memory", "link", "other"] },
     "title": { "type": "string" },
     "searchableText": { "type": "string" },
     "source": {
