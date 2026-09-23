@@ -11,6 +11,7 @@ export type RavinFieldToolResult<T> = {
 export type RavinFieldTools = {
   searchField(input: FieldSearchRequest): Promise<RavinFieldToolResult<unknown>>;
   getFieldNode(nodeId: string): Promise<RavinFieldToolResult<unknown>>;
+  getFieldNodeContent(nodeId: string): Promise<RavinFieldToolResult<unknown>>;
   getRelatedContext(nodeId: string): Promise<RavinFieldToolResult<unknown>>;
 };
 
@@ -32,6 +33,17 @@ export function createRavinFieldTools(client: FieldClient): RavinFieldTools {
     async getFieldNode(nodeId) {
       try {
         return { ok: true, data: await client.getNode(nodeId) };
+      } catch (error) {
+        return { ok: false, error: toMessage(error) };
+      }
+    },
+
+    async getFieldNodeContent(nodeId) {
+      if (!client.getNodeContent) {
+        return { ok: false, error: 'This Field client does not support node content retrieval.' };
+      }
+      try {
+        return { ok: true, data: await client.getNodeContent(nodeId) };
       } catch (error) {
         return { ok: false, error: toMessage(error) };
       }
