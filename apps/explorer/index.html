@@ -17,7 +17,7 @@
       } catch (error) {}
     })();
   </script>
-  <link rel="stylesheet" href="./styles.css?v=20260923-2" />
+  <link rel="stylesheet" href="./styles.css?v=20260923-3" />
 </head>
 <body>
   <div class="app-shell">
@@ -37,7 +37,7 @@
           <svg class="sun-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v2.2M12 19.8V22M4.93 4.93l1.56 1.56M17.51 17.51l1.56 1.56M2 12h2.2M19.8 12H22M4.93 19.07l1.56-1.56M17.51 6.49l1.56-1.56"/></svg>
         </button>
         <button id="addNode" class="icon-action action-button">+ <span>Add node</span></button>
-        <a class="icon-action github-action" href="https://github.com/Link9060/Resonant-Field">GitHub ↗</a>
+        <a class="square-action github-action" href="https://github.com/Link9060/Resonant-Field" aria-label="Open Field source on GitHub" title="Source">↗</a>
       </div>
     </header>
 
@@ -106,9 +106,10 @@
       </div>
 
       <canvas id="graph" aria-label="Interactive knowledge graph"></canvas>
+      <div id="hoverCard" class="hover-card" hidden></div>
 
       <div class="graph-footer">
-        <span>Drag to pan · Scroll to zoom · Click a node to inspect</span>
+        <span>Click inspect · Double-click focus · F fit · ⌘K search</span>
         <span>FIELD · RESONANT ASSIST</span>
       </div>
 
@@ -172,6 +173,6 @@
     </form>
   </dialog>
 
-  <script src="./app.js?v=20260923-2"></script>
+  <script src="./app.js?v=20260923-3"></script>
 </body>
 </html>
