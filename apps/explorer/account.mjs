@@ -247,11 +247,60 @@ async function prepareDataset({ rawNodes, rawEdges, rawContent, rawFiles, rawPre
   nodes.push(...todoClusters.nodes);
   edges = todoClusters.edges;
 
+  const fieldRoot = addFieldRoot(nodes, edges);
+  if (fieldRoot.node) nodes.push(fieldRoot.node);
+  edges = fieldRoot.edges;
+
   assignParents(nodes, edges);
   layoutPreparedNodes(nodes, edges);
   await attachSignedPreviews(nodes, rawContent, rawFiles);
 
   return { nodes, edges, rawNodes, rawEdges };
+}
+
+function addFieldRoot(nodes, edges) {
+  const existing = nodes.find(node => node.sourceType === 'field_root');
+  if (existing) return { node: null, edges };
+
+  const workspaces = nodes.filter(node => node.type === 'collection' && node.sourceType === 'workspace');
+  if (!workspaces.length) return { node: null, edges };
+
+  const newest = [...workspaces].sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')))[0];
+  const root = {
+    id: 'virtual:field:root',
+    type: 'collection',
+    title: 'My Field',
+    summary: 'Your connected Resonant knowledge.',
+    cluster: 'Field',
+    source: 'Field',
+    ai: true,
+    recent: 10,
+    x: 0,
+    y: 0,
+    live: true,
+    virtual: true,
+    virtualCount: workspaces.length,
+    createdAt: newest?.createdAt || new Date().toISOString(),
+    updatedAt: newest?.updatedAt || new Date().toISOString(),
+    sourceProduct: 'field-ui',
+    sourceType: 'field_root',
+    rawMetadata: { virtual: true, field_root: true },
+  };
+
+  const rootEdges = workspaces.map((workspace, index) => ({
+    id: `virtual-edge:field-root:${workspace.id}`,
+    a: root.id,
+    b: workspace.id,
+    strength: 1,
+    type: 'contains',
+    origin: 'field-ui',
+    virtual: true,
+    live: true,
+    createdAt: workspace.createdAt,
+    order: index,
+  }));
+
+  return { node: root, edges: [...edges, ...rootEdges] };
 }
 
 function buildTodoMapClusters(nodes, edges) {
@@ -415,7 +464,8 @@ function layoutPreparedNodes(nodes, edges) {
     children.set(edge.a, list);
   }
 
-  const root = nodes.find(node => node.type === 'collection' && node.sourceType === 'workspace')
+  const root = nodes.find(node => node.type === 'collection' && node.sourceType === 'field_root')
+    || nodes.find(node => node.type === 'collection' && node.sourceType === 'workspace')
     || nodes.find(node => node.type === 'collection' && /^relay$/i.test(node.title))
     || nodes.find(node => node.type === 'collection');
 
@@ -663,7 +713,8 @@ async function buildMyField() {
 }
 
 function createBuildPlan(nodes, edges) {
-  const root = nodes.find(node => node.type === 'collection' && node.sourceType === 'workspace')
+  const root = nodes.find(node => node.type === 'collection' && node.sourceType === 'field_root')
+    || nodes.find(node => node.type === 'collection' && node.sourceType === 'workspace')
     || nodes.find(node => node.type === 'collection' && /^relay$/i.test(node.title))
     || nodes.find(node => node.type === 'collection');
 
@@ -833,7 +884,10 @@ function bestParentForNode(nodeId, edges, oldNodeIds, newNodeIds) {
   }
 
   candidates.sort((a, b) => b.score - a.score);
-  return candidates[0]?.id || Field.nodes.find(node => node.type === 'collection' && node.sourceType === 'workspace')?.id || null;
+  return candidates[0]?.id
+    || Field.nodes.find(node => node.type === 'collection' && node.sourceType === 'field_root')?.id
+    || Field.nodes.find(node => node.type === 'collection' && node.sourceType === 'workspace')?.id
+    || null;
 }
 
 function showSyncFlash(message) {
