@@ -181,7 +181,9 @@ const state = {
   offsetX: 0,
   offsetY: 0,
   dragging: false,
-  dragStart: null
+  dragStart: null,
+  animation: null,
+  animationFrame: 0
 };
 
 let width = 0;
@@ -252,6 +254,13 @@ function isVisible(node) {
   if (!node || !state.filters.has(node.type)) return false;
   if (state.view === 'projects' && node.type !== 'project' && node.type !== 'collection') return false;
   if (state.view === 'recent' && node.recent < 8) return false;
+  if (
+    node.lodMinScale &&
+    state.scale < node.lodMinScale &&
+    !state.query &&
+    state.selected !== node.id &&
+    state.selected !== node.parentId
+  ) return false;
   if (state.query) {
     const q = state.query.toLowerCase();
     const hay = `${node.title} ${node.summary} ${node.cluster} ${node.type} ${node.contentText ?? ''} ${node.extractedPreview ?? ''} ${(node.contentBlocks ?? []).map(block => block.text ?? '').join(' ')}`.toLowerCase();
@@ -317,17 +326,26 @@ function isSemanticEdge(edge) {
   return edge.type === 'context' || edge.type === 'cross-project' || edge.type === 'semantic_related';
 }
 
-function render() {
+function render(now = performance.now()) {
   ctx.clearRect(0,0,width,height);
   drawBackdrop();
-  const visible = new Set(visibleNodes().map(n => n.id));
+  const currentlyVisible = visibleNodes();
+  const visible = new Set(currentlyVisible.map(n => n.id));
   const colors = graphTheme();
   const neighborhood = selectedNeighborhood();
 
   for (const edge of edges) {
     if (!visible.has(edge.a) || !visible.has(edge.b)) continue;
-    const a = worldToScreen(getNode(edge.a));
-    const b = worldToScreen(getNode(edge.b));
+    const aState = animatedNodeState(getNode(edge.a), now);
+    const bState = animatedNodeState(getNode(edge.b), now);
+    const edgeProgress = animatedEdgeProgress(edge, now);
+    if (edgeProgress <= 0 || aState.alpha <= 0 || bState.alpha <= 0) continue;
+    const a = worldToScreen(aState);
+    const bFull = worldToScreen(bState);
+    const b = {
+      x: a.x + (bFull.x - a.x) * edgeProgress,
+      y: a.y + (bFull.y - a.y) * edgeProgress
+    };
     const selectedEdge = state.selected && (edge.a === state.selected || edge.b === state.selected);
     const dimmed = state.selected && !selectedEdge;
     ctx.beginPath();
@@ -335,14 +353,89 @@ function render() {
     ctx.lineTo(b.x,b.y);
     ctx.lineWidth = selectedEdge ? 1.2 : .62;
     ctx.setLineDash(isSemanticEdge(edge) ? [4,5] : []);
+    const opacity = (selectedEdge ? .46 : dimmed ? .018 : .07 + edge.strength*.075) * edgeProgress;
     ctx.strokeStyle = selectedEdge
       ? colors.edgeSelected
-      : `rgba(${colors.edge[0]},${colors.edge[1]},${colors.edge[2]},${dimmed ? .018 : .07 + edge.strength*.075})`;
+      : `rgba(${colors.edge[0]},${colors.edge[1]},${colors.edge[2]},${opacity})`;
     ctx.stroke();
     ctx.setLineDash([]);
   }
 
-  for (const node of visibleNodes()) drawNode(node, !state.selected || neighborhood.has(node.id));
+  for (const node of currentlyVisible) {
+    const visual = animatedNodeState(node, now);
+    if (visual.alpha <= 0) continue;
+    drawNode(node, !state.selected || neighborhood.has(node.id), visual);
+  }
+
+  if (state.animation) {
+    const elapsed = now - state.animation.start;
+    if (elapsed < state.animation.duration + 180) {
+      cancelAnimationFrame(state.animationFrame);
+      state.animationFrame = requestAnimationFrame(render);
+    } else {
+      state.animation = null;
+      state.animationFrame = 0;
+    }
+  }
+}
+
+function easeOutCubic(value) {
+  const t = Math.max(0, Math.min(1, value));
+  return 1 - Math.pow(1 - t, 3);
+}
+
+function animatedNodeState(node, now) {
+  if (!state.animation || !node) return { ...node, alpha: 1, scaleFactor: 1 };
+  const entry = state.animation.nodes?.[node.id];
+  if (!entry) return { ...node, alpha: 1, scaleFactor: 1 };
+
+  const elapsed = now - state.animation.start - (entry.delay ?? 0);
+  const progress = easeOutCubic(elapsed / Math.max(1, entry.duration ?? 520));
+  const from = entry.fromId ? getNode(entry.fromId) : null;
+  const fromX = from?.x ?? node.x;
+  const fromY = from?.y ?? node.y;
+
+  return {
+    ...node,
+    x: fromX + (node.x - fromX) * progress,
+    y: fromY + (node.y - fromY) * progress,
+    alpha: progress,
+    scaleFactor: .35 + progress * .65
+  };
+}
+
+function animatedEdgeProgress(edge, now) {
+  if (!state.animation) return 1;
+  const entry = state.animation.edges?.[edge.id];
+  if (!entry) {
+    const a = state.animation.nodes?.[edge.a];
+    const b = state.animation.nodes?.[edge.b];
+    if (!a && !b) return 1;
+    const fallback = b || a;
+    const elapsed = now - state.animation.start - (fallback?.delay ?? 0);
+    return easeOutCubic(elapsed / Math.max(1, fallback?.duration ?? 520));
+  }
+  const elapsed = now - state.animation.start - (entry.delay ?? 0);
+  return easeOutCubic(elapsed / Math.max(1, entry.duration ?? 520));
+}
+
+function startRevealAnimation(plan = {}) {
+  cancelAnimationFrame(state.animationFrame);
+  state.animation = {
+    start: performance.now(),
+    duration: Math.max(500, plan.duration ?? 2200),
+    nodes: plan.nodes ?? {},
+    edges: plan.edges ?? {},
+    mode: plan.mode ?? 'reveal'
+  };
+  state.animationFrame = requestAnimationFrame(render);
+}
+
+function stopRevealAnimation() {
+  cancelAnimationFrame(state.animationFrame);
+  state.animationFrame = 0;
+  state.animation = null;
+  render();
 }
 
 function drawBackdrop() {
@@ -357,42 +450,99 @@ function drawBackdrop() {
   }
 }
 
-function drawNode(node, inFocus = true) {
-  const p = worldToScreen(node);
-  const r = nodeRadius(node) * Math.max(.8, Math.min(1.25,state.scale));
+const previewImageCache = new Map();
+
+function drawNode(node, inFocus = true, visual = node) {
+  const p = worldToScreen(visual);
+  const r = nodeRadius(node) * Math.max(.8, Math.min(1.25,state.scale)) * (visual.scaleFactor ?? 1);
   const selected = state.selected === node.id;
   const hovered = state.hovered === node.id;
   const project = (node.type === 'project' || node.type === 'collection');
   const colors = graphTheme();
   const nodeColor = palette()[node.type] || (isDarkTheme() ? '#bdbdc4' : '#55555c');
+  const focusAlpha = selected ? 1 : !inFocus ? .16 : project ? .96 : hovered ? 1 : .86;
+  const alpha = focusAlpha * (visual.alpha ?? 1);
 
-  ctx.beginPath();
-  ctx.arc(p.x,p.y,r + (hovered ? 1.2 : 0),0,Math.PI*2);
-  ctx.fillStyle = selected ? colors.selectedNode : nodeColor;
-  ctx.globalAlpha = selected ? 1 : !inFocus ? .16 : project ? .96 : hovered ? 1 : .86;
-  ctx.fill();
-  ctx.globalAlpha = 1;
+  if (node.recent >= 9 || selected) {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r + (selected ? 13 : 8), 0, Math.PI * 2);
+    ctx.fillStyle = nodeColor;
+    ctx.globalAlpha = alpha * (selected ? .075 : .035);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  drawNodeCore(node, p, r + (hovered ? 1.2 : 0), selected ? colors.selectedNode : nodeColor);
 
   ctx.beginPath();
   ctx.arc(p.x,p.y,r + (selected ? 4 : hovered ? 3.8 : 3),0,Math.PI*2);
   ctx.strokeStyle = selected ? colors.ringSelected : colors.ring;
-  ctx.globalAlpha = !inFocus ? .18 : 1;
   ctx.lineWidth = selected ? 1.15 : .85;
   ctx.stroke();
-  ctx.globalAlpha = 1;
+
+  if (node.type === 'todo') {
+    ctx.beginPath();
+    ctx.arc(
+      p.x,
+      p.y,
+      r + 6,
+      -Math.PI / 2,
+      node.completed ? Math.PI * 1.5 : Math.PI * .86
+    );
+    ctx.strokeStyle = nodeColor;
+    ctx.globalAlpha = node.completed ? .34 : .62;
+    ctx.lineWidth = 1.1;
+    ctx.stroke();
+    ctx.globalAlpha = alpha;
+  }
+
+  if (node.type === 'calendar_event') {
+    for (const angle of [-Math.PI / 2, 0]) {
+      ctx.beginPath();
+      ctx.moveTo(p.x + Math.cos(angle) * (r + 4), p.y + Math.sin(angle) * (r + 4));
+      ctx.lineTo(p.x + Math.cos(angle) * (r + 7), p.y + Math.sin(angle) * (r + 7));
+      ctx.strokeStyle = nodeColor;
+      ctx.lineWidth = .9;
+      ctx.stroke();
+    }
+  }
+
+  if (node.ai) {
+    const orbitAngle = stableAngle(node.id);
+    const ox = p.x + Math.cos(orbitAngle) * (r + 8);
+    const oy = p.y + Math.sin(orbitAngle) * (r + 8);
+    ctx.beginPath();
+    ctx.arc(ox, oy, 1.45, 0, Math.PI * 2);
+    ctx.fillStyle = palette().ravin_conversation;
+    ctx.globalAlpha = .72 * alpha;
+    ctx.fill();
+  }
+
+  ctx.restore();
+
+  const shouldPreview =
+    state.scale > 1.92 &&
+    (selected || hovered || (node.recent >= 9 && ['note','file'].includes(node.type)));
+  if (shouldPreview && !project) {
+    drawClosePreview(node, p, alpha);
+    return;
+  }
 
   const showLabel =
     selected ||
     hovered ||
     project ||
     (state.selected && inFocus) ||
-    (state.scale > .98 && node.recent >= 8);
+    (state.scale > 1.08 && node.recent >= 8);
 
   if (showLabel && inFocus) {
     const label = truncateCanvasLabel(node.title, project ? 28 : 24);
     ctx.font = project ? '600 11px Inter, system-ui' : '500 9px Inter, system-ui';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = selected || hovered ? colors.activeLabel : project ? colors.hubLabel : colors.label;
+    ctx.globalAlpha = alpha;
 
     let labelX = p.x;
     let labelY = p.y + r + 12;
@@ -408,7 +558,95 @@ function drawNode(node, inFocus = true) {
       ctx.textAlign = 'center';
     }
     ctx.fillText(label, labelX, labelY);
+    ctx.globalAlpha = 1;
   }
+}
+
+function drawNodeCore(node, p, r, fillStyle) {
+  ctx.fillStyle = fillStyle;
+  ctx.beginPath();
+  if (node.type === 'file') {
+    const sides = 6;
+    for (let i = 0; i < sides; i++) {
+      const angle = -Math.PI / 2 + i * (Math.PI * 2 / sides);
+      const x = p.x + Math.cos(angle) * r;
+      const y = p.y + Math.sin(angle) * r;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+  } else {
+    ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+  }
+  ctx.fill();
+}
+
+function stableAngle(value) {
+  let hash = 0;
+  for (let i = 0; i < String(value).length; i++) hash = ((hash << 5) - hash + String(value).charCodeAt(i)) | 0;
+  return (Math.abs(hash) % 628) / 100;
+}
+
+function drawClosePreview(node, p, alpha) {
+  const cardWidth = node.contentKind === 'image' ? 88 : 104;
+  const cardHeight = node.contentKind === 'image' ? 62 : 48;
+  const x = p.x - cardWidth / 2;
+  const y = p.y - cardHeight / 2;
+  const dark = isDarkTheme();
+
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, alpha * .98);
+  roundedRect(ctx, x, y, cardWidth, cardHeight, 7);
+  ctx.fillStyle = dark ? 'rgba(7,7,8,.94)' : 'rgba(255,255,255,.96)';
+  ctx.fill();
+  ctx.strokeStyle = dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.12)';
+  ctx.lineWidth = .8;
+  ctx.stroke();
+
+  if (node.contentKind === 'image' && node.previewUrl) {
+    const image = previewImage(node.previewUrl);
+    if (image?.complete && image.naturalWidth) {
+      ctx.save();
+      roundedRect(ctx, x + 3, y + 3, cardWidth - 6, cardHeight - 6, 5);
+      ctx.clip();
+      ctx.drawImage(image, x + 3, y + 3, cardWidth - 6, cardHeight - 6);
+      ctx.restore();
+      ctx.restore();
+      return;
+    }
+  }
+
+  ctx.fillStyle = dark ? '#f2f2f3' : '#171719';
+  ctx.font = '600 8.5px Inter, system-ui';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText(truncateCanvasLabel(node.title, 19), x + 8, y + 8);
+  ctx.fillStyle = dark ? '#85858d' : '#707077';
+  ctx.font = '500 7.5px Inter, system-ui';
+  const preview = truncateCanvasLabel(node.summary || node.extractedPreview || node.type, 30);
+  ctx.fillText(preview, x + 8, y + 23);
+  ctx.restore();
+}
+
+function previewImage(url) {
+  if (!url) return null;
+  if (previewImageCache.has(url)) return previewImageCache.get(url);
+  const image = new Image();
+  image.decoding = 'async';
+  image.onload = () => render();
+  image.src = url;
+  previewImageCache.set(url, image);
+  return image;
+}
+
+function roundedRect(context, x, y, w, h, radius) {
+  const r = Math.min(radius, w / 2, h / 2);
+  context.beginPath();
+  context.moveTo(x + r, y);
+  context.arcTo(x + w, y, x + w, y + h, r);
+  context.arcTo(x + w, y + h, x, y + h, r);
+  context.arcTo(x, y + h, x, y, r);
+  context.arcTo(x, y, x + w, y, r);
+  context.closePath();
 }
 
 function truncateCanvasLabel(value, max) {
@@ -890,6 +1128,8 @@ window.FieldExplorer = {
   closeNodeDialog,
   nodeDialog,
   nodeForm,
+  startRevealAnimation,
+  stopRevealAnimation,
 };
 
 setupFilters();
