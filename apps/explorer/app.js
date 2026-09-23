@@ -23,30 +23,64 @@ const labels = {
   chat: 'Chats'
 };
 
+const demoScreenshot = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="600" viewBox="0 0 960 600">
+  <rect width="960" height="600" fill="#07070a"/>
+  <rect x="24" y="24" width="912" height="552" rx="24" fill="#111118" stroke="#2a2a35"/>
+  <rect x="48" y="50" width="190" height="500" rx="18" fill="#0b0b10" stroke="#24242d"/>
+  <circle cx="77" cy="82" r="9" fill="#f3f3f5"/>
+  <rect x="98" y="75" width="91" height="14" rx="7" fill="#d8d8de"/>
+  <rect x="68" y="130" width="145" height="34" rx="10" fill="#1a1a22"/>
+  <rect x="68" y="180" width="120" height="10" rx="5" fill="#565663"/>
+  <rect x="68" y="208" width="132" height="10" rx="5" fill="#3e3e49"/>
+  <rect x="68" y="236" width="104" height="10" rx="5" fill="#3e3e49"/>
+  <rect x="270" y="54" width="628" height="74" rx="18" fill="#0d0d13" stroke="#24242d"/>
+  <rect x="296" y="78" width="190" height="16" rx="8" fill="#e6e6ea"/>
+  <rect x="296" y="103" width="290" height="8" rx="4" fill="#4b4b57"/>
+  <rect x="270" y="150" width="300" height="180" rx="18" fill="#0d0d13" stroke="#24242d"/>
+  <rect x="592" y="150" width="306" height="180" rx="18" fill="#0d0d13" stroke="#24242d"/>
+  <rect x="270" y="352" width="628" height="198" rx="18" fill="#0d0d13" stroke="#24242d"/>
+  <circle cx="335" cy="220" r="28" fill="#7767d8" opacity=".8"/>
+  <circle cx="397" cy="238" r="13" fill="#73b7ff" opacity=".85"/>
+  <circle cx="445" cy="202" r="9" fill="#f1b06d" opacity=".9"/>
+  <line x1="335" y1="220" x2="397" y2="238" stroke="#7f7f91" opacity=".5"/>
+  <line x1="397" y1="238" x2="445" y2="202" stroke="#7f7f91" opacity=".4"/>
+  <rect x="620" y="182" width="200" height="13" rx="6.5" fill="#bdbdc6"/>
+  <rect x="620" y="212" width="240" height="9" rx="4.5" fill="#4b4b57"/>
+  <rect x="620" y="237" width="190" height="9" rx="4.5" fill="#3b3b45"/>
+  <rect x="620" y="262" width="220" height="9" rx="4.5" fill="#3b3b45"/>
+  <rect x="300" y="388" width="250" height="15" rx="7.5" fill="#cfcfd6"/>
+  <rect x="300" y="420" width="510" height="9" rx="4.5" fill="#474752"/>
+  <rect x="300" y="446" width="470" height="9" rx="4.5" fill="#3a3a45"/>
+  <rect x="300" y="472" width="390" height="9" rx="4.5" fill="#3a3a45"/>
+</svg>`);
+
 const seedNodes = [
   { id:'p-nova', type:'project', title:'Nova Enduro', summary:'Resonant Bikes enduro frame and suspension project.', cluster:'Nova', source:'Relay', ai:true, recent:9, x:-280,y:-70 },
-  { id:'n-linkage', type:'note', title:'Linkage Geometry', summary:'Progression, axle path, pivot layout, and packaging notes.', cluster:'Nova', source:'Relay Notes', ai:true, recent:8, x:-410,y:-185 },
-  { id:'f-leverage', type:'file', title:'Leverage Analysis.pdf', summary:'Suspension leverage analysis and design snapshots.', cluster:'Nova', source:'Link Storage', ai:true, recent:7, x:-435,y:45 },
-  { id:'t-prototype', type:'todo', title:'Prototype linkage', summary:'Prepare first physical linkage prototype.', cluster:'Nova', source:'Relay Planner', ai:true, recent:5, x:-245,y:125 },
+  { id:'n-linkage', type:'note', title:'Linkage Geometry', summary:'Progression, axle path, pivot layout, and packaging notes.', contentKind:'note_blocks', contentBlocks:[{type:'heading',text:'Nova linkage direction'},{type:'paragraph',text:'Target a progressive leverage curve while keeping the packaging compact around the jackshaft.'},{type:'bullet',text:'Keep the axle path meaningfully rearward early in travel.'},{type:'bullet',text:'Leave enough clearance around the shock and main pivot for service.'}], cluster:'Nova', source:'Relay Notes', ai:true, recent:8, x:-410,y:-185 },
+  { id:'f-leverage', type:'file', title:'Leverage Analysis.pdf', summary:'Suspension leverage analysis and design snapshots.', contentKind:'file', fileName:'Leverage Analysis.pdf', mimeType:'application/pdf', fileSize:'2.4 MB', extractedPreview:'Leverage curve review: ratio starts high, trends downward through travel, and maintains useful progression near bottom-out.', cluster:'Nova', source:'Link Storage', ai:true, recent:7, x:-435,y:45 },
+  { id:'t-prototype', type:'todo', title:'Prototype linkage', summary:'Prepare first physical linkage prototype.', contentKind:'todo', dueOn:'Sep 28', completed:false, cluster:'Nova', source:'Relay Planner', ai:true, recent:5, x:-245,y:125 },
   { id:'r-nova', type:'ravin_conversation', title:'Nova suspension discussion', summary:'RAVIN conversation about leverage ratio and jackshaft packaging.', cluster:'Nova', source:'RAVIN', ai:true, recent:10, x:-150,y:-180 },
   { id:'m-nova', type:'memory', title:'Nova design direction', summary:'Persistent project memory: progressive linkage and modular platform.', cluster:'Nova', source:'RAVIN Memory', ai:true, recent:9, x:-110,y:-25 },
 
   { id:'p-relay', type:'project', title:'Relay', summary:'Communication and productivity platform for students.', cluster:'Relay', source:'Link', ai:true, recent:10, x:250,y:-80 },
-  { id:'n-launch', type:'note', title:'Launch checklist', summary:'Final cleanup and release checklist for Relay.', cluster:'Relay', source:'Relay Notes', ai:true, recent:10, x:390,y:-190 },
+  { id:'n-launch', type:'note', title:'Launch checklist', summary:'Final cleanup and release checklist for Relay.', contentKind:'note_blocks', contentBlocks:[{type:'heading',text:'Before public release'},{type:'todo',text:'Verify sign-in and account linking',checked:true},{type:'todo',text:'Run chat send/receive regression checks',checked:true},{type:'todo',text:'Review remaining mobile layout issues',checked:false},{type:'todo',text:'Confirm public build has no owner-only UI',checked:false}], cluster:'Relay', source:'Relay Notes', ai:true, recent:10, x:390,y:-190 },
   { id:'t-release', type:'todo', title:'Public release cleanup', summary:'Finish remaining launch polish and regression checks.', cluster:'Relay', source:'Relay Planner', ai:true, recent:9, x:430,y:-15 },
-  { id:'f-security', type:'file', title:'Security audit.md', summary:'Security review notes and vulnerability remediation log.', cluster:'Relay', source:'Link Storage', ai:true, recent:8, x:310,y:105 },
+  { id:'f-security', type:'file', title:'Security audit.md', summary:'Security review notes and vulnerability remediation log.', contentKind:'text', contentText:'Security pass\n\n• RLS enabled on private user data.\n• Server-only secrets remain out of browser bundles.\n• OAuth scopes reduced to the minimum needed.\n• Message and account actions are permission-checked.', fileName:'Security audit.md', mimeType:'text/markdown', fileSize:'18 KB', cluster:'Relay', source:'Link Storage', ai:true, recent:8, x:310,y:105 },
   { id:'r-field', type:'ravin_conversation', title:'Field + RAVIN integration', summary:'Design discussion for shared context retrieval.', cluster:'Relay', source:'RAVIN', ai:true, recent:10, x:120,y:55 },
-  { id:'n-ui', type:'note', title:'Relay UI system', summary:'Glass mode, particles, dashboard widgets, and motion rules.', cluster:'Relay', source:'Relay Notes', ai:true, recent:7, x:135,y:-180 },
+  { id:'n-ui', type:'note', title:'Relay UI system', summary:'Glass mode, particles, dashboard widgets, and motion rules.', contentKind:'note_blocks', contentBlocks:[{type:'heading',text:'Motion rules'},{type:'paragraph',text:'Use particles for transitions that communicate hierarchy, not on every interaction.'},{type:'paragraph',text:'Glass panels should preserve legibility first; refraction and RGB edge effects are accents.'}], cluster:'Relay', source:'Relay Notes', ai:true, recent:7, x:135,y:-180 },
 
   { id:'p-school', type:'project', title:'School', summary:'Classes, homework, studying, and school planning.', cluster:'School', source:'Link', ai:true, recent:8, x:-30,y:300 },
-  { id:'n-calc', type:'note', title:'Calculus review', summary:'Limits, continuity, conjugates, and special trig limits.', cluster:'School', source:'Relay Notes', ai:true, recent:7, x:-180,y:395 },
+  { id:'n-calc', type:'note', title:'Calculus review', summary:'Limits, continuity, conjugates, and special trig limits.', contentKind:'note_blocks', contentBlocks:[{type:'heading',text:'Limits review'},{type:'paragraph',text:'When direct substitution gives 0/0, factor or rationalize before taking the limit.'},{type:'bullet',text:'Conjugates are useful when square roots cause the indeterminate form.'},{type:'bullet',text:'Remember the special trig limit sin(x)/x → 1 as x → 0.'}], cluster:'School', source:'Relay Notes', ai:true, recent:7, x:-180,y:395 },
   { id:'f-psych', type:'file', title:'AP Psych study.pdf', summary:'Psychology reading and study material.', cluster:'School', source:'Link Storage', ai:true, recent:6, x:90,y:410 },
-  { id:'t-homework', type:'todo', title:'Finish calculus assignment', summary:'Complete remaining calculus problems.', cluster:'School', source:'Relay Planner', ai:true, recent:9, x:-165,y:245 },
-  { id:'e-game', type:'calendar_event', title:'Football game', summary:'Game-day event from Relay calendar.', cluster:'School', source:'Relay Calendar', ai:true, recent:4, x:150,y:260 },
+  { id:'t-homework', type:'todo', title:'Finish calculus assignment', summary:'Complete remaining calculus problems.', contentKind:'todo', dueOn:'Tomorrow', completed:false, cluster:'School', source:'Relay Planner', ai:true, recent:9, x:-165,y:245 },
+  { id:'e-game', type:'calendar_event', title:'Football game', summary:'Game-day event from Relay calendar.', contentKind:'calendar_event', eventDate:'Friday', eventTime:'7:00 PM', eventDetails:'Team warmups and game-day block.', cluster:'School', source:'Relay Calendar', ai:true, recent:4, x:150,y:260 },
+
+  { id:'img-relay', type:'file', title:'Relay dashboard screenshot.png', summary:'Captured UI reference from the Relay dashboard.', contentKind:'image', previewUrl:demoScreenshot, previewAlt:'Mock Relay dashboard screenshot preview', fileName:'Relay dashboard screenshot.png', mimeType:'image/png', fileSize:'412 KB', cluster:'Relay', source:'Link Storage', ai:true, recent:10, x:505,y:105 },
 
   { id:'p-field', type:'project', title:'Resonant Field', summary:'Shared knowledge engine connecting Resonant Assist products.', cluster:'Field', source:'Field', ai:true, recent:10, x:0,y:-10 },
   { id:'n-arch', type:'note', title:'Field architecture', summary:'Universal nodes, edges, adapters, permissions, and retrieval.', cluster:'Field', source:'Field Docs', ai:true, recent:10, x:-30,y:-155 },
-  { id:'f-schema', type:'file', title:'Knowledge schemas', summary:'Portable node and edge JSON schemas.', cluster:'Field', source:'Field Core', ai:true, recent:10, x:35,y:135 }
+  { id:'f-schema', type:'file', title:'Knowledge schemas', summary:'Portable node and edge JSON schemas.', contentKind:'file', fileName:'knowledge-node.schema.json', mimeType:'application/json', fileSize:'3 KB', extractedPreview:'Defines portable node identity, owner, type, title, source metadata, and timestamps for Field consumers.', cluster:'Field', source:'Field Core', ai:true, recent:10, x:35,y:135 }
 ];
 
 const CUSTOM_NODE_KEY = 'resonant-field-explorer-custom-nodes-v1';
@@ -76,7 +110,7 @@ const edges = [
   ['p-nova','r-nova',.91,'context'], ['p-nova','m-nova',.94,'memory'], ['r-nova','n-linkage',.89,'references'],
   ['f-leverage','n-linkage',.86,'supports'], ['m-nova','r-nova',.8,'derived from'],
   ['p-relay','n-launch',.93,'contains'], ['p-relay','t-release',.9,'contains'], ['p-relay','f-security',.82,'contains'],
-  ['p-relay','r-field',.8,'context'], ['p-relay','n-ui',.78,'contains'], ['r-field','p-field',.95,'references'],
+  ['p-relay','r-field',.8,'context'], ['p-relay','n-ui',.78,'contains'], ['p-relay','img-relay',.84,'contains'], ['r-field','p-field',.95,'references'],
   ['p-school','n-calc',.86,'contains'], ['p-school','f-psych',.8,'contains'], ['p-school','t-homework',.87,'contains'],
   ['p-school','e-game',.7,'contains'], ['n-calc','t-homework',.9,'related'],
   ['p-field','n-arch',.96,'contains'], ['p-field','f-schema',.92,'contains'], ['p-field','r-field',.94,'context'],
@@ -165,7 +199,7 @@ function isVisible(node) {
   if (state.view === 'recent' && node.recent < 8) return false;
   if (state.query) {
     const q = state.query.toLowerCase();
-    const hay = `${node.title} ${node.summary} ${node.cluster} ${node.type}`.toLowerCase();
+    const hay = `${node.title} ${node.summary} ${node.cluster} ${node.type} ${node.contentText ?? ''} ${node.extractedPreview ?? ''} ${(node.contentBlocks ?? []).map(block => block.text ?? '').join(' ')}`.toLowerCase();
     if (!hay.includes(q)) return false;
   }
   return true;
@@ -307,6 +341,11 @@ function selectNode(id) {
     <p class="node-summary">${escapeHtml(node.summary)}</p>
 
     <div class="inspector-section">
+      <p class="section-label">CONTENT PREVIEW</p>
+      ${renderNodePreview(node)}
+    </div>
+
+    <div class="inspector-section">
       <p class="section-label">METADATA</p>
       <div class="meta-grid">
         <div class="meta-card"><span>Source</span><strong>${escapeHtml(node.source)}</strong></div>
@@ -348,6 +387,38 @@ function selectNode(id) {
     render();
   }));
   render();
+}
+
+function renderNodePreview(node) {
+  if (node.contentKind === 'image' && node.previewUrl) {
+    return `<figure class="content-preview image-preview"><img src="${node.previewUrl}" alt="${escapeHtml(node.previewAlt || node.title)}" /><figcaption>${escapeHtml(node.fileName || node.title)} · ${escapeHtml(node.fileSize || 'Image')}</figcaption></figure>`;
+  }
+
+  if (node.contentKind === 'note_blocks' && Array.isArray(node.contentBlocks)) {
+    return `<div class="content-preview note-preview">${node.contentBlocks.map(block => {
+      const text = escapeHtml(String(block.text ?? ''));
+      if (block.type === 'heading') return `<h3>${text}</h3>`;
+      if (block.type === 'bullet') return `<p class="preview-bullet">• <span>${text}</span></p>`;
+      if (block.type === 'todo') return `<p class="preview-todo"><span class="preview-check ${block.checked ? 'checked' : ''}">${block.checked ? '✓' : ''}</span><span class="${block.checked ? 'preview-done' : ''}">${text}</span></p>`;
+      if (block.type === 'quote') return `<blockquote>${text}</blockquote>`;
+      return `<p>${text}</p>`;
+    }).join('')}</div>`;
+  }
+
+  if (node.contentKind === 'todo') {
+    return `<div class="content-preview todo-preview"><div class="preview-check ${node.completed ? 'checked' : ''}">${node.completed ? '✓' : ''}</div><div><strong>${escapeHtml(node.title)}</strong><span>Due ${escapeHtml(node.dueOn || 'unscheduled')}</span></div></div>`;
+  }
+
+  if (node.contentKind === 'calendar_event') {
+    return `<div class="content-preview calendar-preview"><strong>${escapeHtml(node.eventDate || '')}${node.eventTime ? ' · ' + escapeHtml(node.eventTime) : ''}</strong><p>${escapeHtml(node.eventDetails || node.summary)}</p></div>`;
+  }
+
+  if (node.contentKind === 'file') {
+    return `<div class="content-preview file-preview"><div class="file-icon">FILE</div><div><strong>${escapeHtml(node.fileName || node.title)}</strong><span>${escapeHtml(node.mimeType || 'File')}${node.fileSize ? ' · ' + escapeHtml(node.fileSize) : ''}</span></div></div>${node.extractedPreview ? `<p class="extracted-preview">${escapeHtml(node.extractedPreview)}</p>` : ''}`;
+  }
+
+  const text = node.contentText || node.summary;
+  return `<div class="content-preview text-preview">${escapeHtml(text).replace(/\n/g, '<br>')}</div>`;
 }
 
 function escapeHtml(value) {
@@ -392,7 +463,7 @@ function runRavin(prompt) {
   const result = document.querySelector('#ravinResult');
   const tokens = prompt.toLowerCase().split(/\W+/).filter(w=>w.length>3);
   const ranked = nodes.map(node => {
-    const text = `${node.title} ${node.summary} ${node.cluster}`.toLowerCase();
+    const text = `${node.title} ${node.summary} ${node.cluster} ${node.contentText ?? ''} ${node.extractedPreview ?? ''} ${(node.contentBlocks ?? []).map(block => block.text ?? '').join(' ')}`.toLowerCase();
     let score = tokens.reduce((sum,t)=>sum+(text.includes(t)?2:0),0);
     if (/nova/.test(prompt.toLowerCase()) && node.cluster==='Nova') score += 3;
     if (/relay/.test(prompt.toLowerCase()) && node.cluster==='Relay') score += 3;
@@ -452,6 +523,8 @@ nodeForm.addEventListener('submit', event => {
     type,
     title,
     summary,
+    contentKind: 'text',
+    contentText: summary,
     cluster,
     source: 'Field Explorer',
     ai: document.querySelector('#nodeRavin').checked,
