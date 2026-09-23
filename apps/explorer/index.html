@@ -5,6 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="description" content="Resonant Field knowledge explorer." />
   <title>Field — Resonant Assist</title>
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem('resonant-theme') || localStorage.getItem('relay-theme');
+        var theme = stored || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.classList.toggle('dark', theme === 'dark');
+        document.documentElement.dataset.theme = theme;
+      } catch (error) {}
+    })();
+  </script>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
@@ -20,8 +30,12 @@
 
       <div class="top-actions">
         <span class="status"><i></i> READY</span>
+        <button id="themeToggle" class="square-action theme-toggle" type="button" aria-label="Switch theme" title="Switch theme">
+          <svg class="moon-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.4A8.5 8.5 0 0 1 8.6 4a8.5 8.5 0 1 0 11.4 11.4Z"/></svg>
+          <svg class="sun-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v2.2M12 19.8V22M4.93 4.93l1.56 1.56M17.51 17.51l1.56 1.56M2 12h2.2M19.8 12H22M4.93 19.07l1.56-1.56M17.51 6.49l1.56-1.56"/></svg>
+        </button>
         <button id="addNode" class="icon-action action-button">+ <span>Add node</span></button>
-        <a class="icon-action" href="https://github.com/Link9060/Resonant-Field">GitHub ↗</a>
+        <a class="icon-action github-action" href="https://github.com/Link9060/Resonant-Field">GitHub ↗</a>
       </div>
     </header>
 
@@ -52,9 +66,11 @@
       </div>
 
       <div class="sidebar-meta">
-        <div><span>Nodes</span><strong id="nodeCount">0</strong></div>
-        <div><span>Links</span><strong id="edgeCount">0</strong></div>
-        <div><span>Clusters</span><strong id="clusterCount">0</strong></div>
+        <span><strong id="nodeCount">0</strong> nodes</span>
+        <span aria-hidden="true">·</span>
+        <span><strong id="edgeCount">0</strong> links</span>
+        <span aria-hidden="true">·</span>
+        <span><strong id="clusterCount">0</strong> clusters</span>
       </div>
 
       <section class="ravin-box">
@@ -80,7 +96,7 @@
           <strong id="viewTitle">Everything connected</strong>
         </div>
         <div class="toolbar-buttons">
-          <button id="centerGraph" title="Center graph">Center</button>
+          <button id="centerGraph" title="Fit graph">Fit</button>
           <button id="zoomOut" title="Zoom out">−</button>
           <span id="zoomLabel">100%</span>
           <button id="zoomIn" title="Zoom in">+</button>
