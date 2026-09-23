@@ -31,7 +31,21 @@
       </div>
 
       <div class="top-actions">
-        <span class="status"><i></i> READY</span>
+        <span class="status"><i></i><span id="fieldStatus">DEMO</span></span>
+        <div class="account-wrap">
+          <button id="accountButton" class="account-action" type="button" aria-haspopup="menu" aria-expanded="false">
+            <span class="account-dot"></span>
+            <span id="accountLabel">Connect Relay</span>
+          </button>
+          <div id="accountMenu" class="account-menu" role="menu" hidden>
+            <div class="account-menu-copy">
+              <span class="section-label">RELAY ACCOUNT</span>
+              <strong id="accountEmail">Not connected</strong>
+            </div>
+            <a id="openRelayAccount" href="https://resonantrelay.org/" role="menuitem">Open Relay</a>
+            <button id="signOutField" type="button" role="menuitem">Sign out of Field</button>
+          </div>
+        </div>
         <button id="themeToggle" class="square-action theme-toggle" type="button" aria-label="Switch theme" title="Switch theme">
           <svg class="moon-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.4A8.5 8.5 0 0 1 8.6 4a8.5 8.5 0 1 0 11.4 11.4Z"/></svg>
           <svg class="sun-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v2.2M12 19.8V22M4.93 4.93l1.56 1.56M17.51 17.51l1.56 1.56M2 12h2.2M19.8 12H22M4.93 19.07l1.56-1.56M17.51 6.49l1.56-1.56"/></svg>
@@ -62,7 +76,7 @@
         <p class="section-label">SCOPE</p>
         <div class="segmented" role="group" aria-label="Graph view">
           <button class="view-button active" data-view="all">All</button>
-          <button class="view-button" data-view="projects">Projects</button>
+          <button class="view-button" data-view="projects">Hubs</button>
           <button class="view-button" data-view="recent">Recent</button>
         </div>
       </div>
@@ -84,9 +98,9 @@
           </div>
         </div>
         <p>Retrieve useful context from the knowledge currently in view.</p>
-        <button class="prompt-chip" data-prompt="What do I know about Nova suspension?">Nova suspension</button>
-        <button class="prompt-chip" data-prompt="What is left for Relay launch?">Relay launch</button>
-        <button class="prompt-chip" data-prompt="What school work is coming up?">School work</button>
+        <button class="prompt-chip" data-prompt="What am I working on?">What am I working on?</button>
+        <button class="prompt-chip" data-prompt="What is due soon?">What is due soon?</button>
+        <button class="prompt-chip" data-prompt="What changed recently?">What changed recently?</button>
         <div id="ravinResult" class="ravin-result" hidden></div>
       </section>
     </aside>
@@ -107,6 +121,10 @@
 
       <canvas id="graph" aria-label="Interactive knowledge graph"></canvas>
       <div id="hoverCard" class="hover-card" hidden></div>
+      <div id="demoBanner" class="demo-banner">
+        <span><strong>Demo Field</strong> · Connect Relay to load your real knowledge.</span>
+        <button id="connectRelayInline" type="button">Connect Relay</button>
+      </div>
 
       <div class="graph-footer">
         <span>Click inspect · Double-click focus · F fit · ⌘K search</span>
@@ -127,7 +145,7 @@
     <form id="nodeForm" method="dialog">
       <div class="dialog-head">
         <div>
-          <p class="section-label">LOCAL FIELD NODE</p>
+          <p id="nodeDialogMode" class="section-label">FIELD NODE</p>
           <h2>Add to Field</h2>
         </div>
         <button type="button" id="closeDialog" class="dialog-close" aria-label="Close">×</button>
@@ -169,10 +187,11 @@
         <button type="button" id="cancelDialog" class="secondary-action">Cancel</button>
         <button type="submit" class="primary-action">Add node</button>
       </div>
-      <p class="dialog-footnote">Prototype nodes stay in this browser. Production Field data lives behind Supabase RLS.</p>
+      <p id="nodeDialogFootnote" class="dialog-footnote">Demo nodes stay in this browser until you connect Relay.</p>
     </form>
   </dialog>
 
-  <script src="./app.js?v=20260923-4"></script>
+  <script src="./app.js?v=20260923-5"></script>
+  <script type="module" src="./account.js?v=20260923-5"></script>
 </body>
 </html>
