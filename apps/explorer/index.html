@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="Interactive developer explorer for the Resonant Field knowledge engine." />
-  <title>Resonant Field — Explorer</title>
+  <meta name="description" content="Resonant Field knowledge explorer." />
+  <title>Field — Resonant Assist</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
@@ -12,60 +12,60 @@
     <header class="topbar">
       <div class="brand">
         <div class="mark" aria-hidden="true">✦</div>
-        <div>
-          <p class="eyebrow">RESONANT ASSIST</p>
-          <h1>Field Explorer</h1>
+        <div class="brand-copy">
+          <strong>Field</strong>
+          <span>RESONANT ASSIST</span>
         </div>
       </div>
 
       <div class="top-actions">
-        <span class="status"><i></i> Interactive prototype</span>
-        <button id="addNode" class="repo-link action-button">+ Add node</button>
-        <a class="repo-link" href="https://github.com/Link9060/Resonant-Field">GitHub ↗</a>
+        <span class="status"><i></i> READY</span>
+        <button id="addNode" class="icon-action action-button">+ <span>Add node</span></button>
+        <a class="icon-action" href="https://github.com/Link9060/Resonant-Field">GitHub ↗</a>
       </div>
     </header>
 
-    <aside class="sidebar panel">
-      <section>
-        <p class="section-label">SEARCH FIELD</p>
+    <aside class="sidebar">
+      <div class="sidebar-section">
         <div class="search-wrap">
-          <input id="searchInput" type="search" autocomplete="off" placeholder="Search notes, files, projects…" />
+          <span class="search-icon">⌕</span>
+          <input id="searchInput" type="search" autocomplete="off" placeholder="Search Field" />
           <kbd>⌘K</kbd>
         </div>
-      </section>
+      </div>
 
-      <section>
+      <div class="sidebar-section">
         <div class="section-head">
-          <p class="section-label">SHOW</p>
+          <p class="section-label">VIEW</p>
           <button id="resetFilters" class="text-button">Reset</button>
         </div>
         <div id="filters" class="filters"></div>
-      </section>
+      </div>
 
-      <section>
-        <p class="section-label">VIEW</p>
+      <div class="sidebar-section">
+        <p class="section-label">SCOPE</p>
         <div class="segmented" role="group" aria-label="Graph view">
           <button class="view-button active" data-view="all">All</button>
           <button class="view-button" data-view="projects">Projects</button>
           <button class="view-button" data-view="recent">Recent</button>
         </div>
-      </section>
+      </div>
 
-      <section class="stats">
-        <div><strong id="nodeCount">0</strong><span>Nodes</span></div>
-        <div><strong id="edgeCount">0</strong><span>Links</span></div>
-        <div><strong id="clusterCount">0</strong><span>Clusters</span></div>
-      </section>
+      <div class="sidebar-meta">
+        <div><span>Nodes</span><strong id="nodeCount">0</strong></div>
+        <div><span>Links</span><strong id="edgeCount">0</strong></div>
+        <div><span>Clusters</span><strong id="clusterCount">0</strong></div>
+      </div>
 
       <section class="ravin-box">
         <div class="ravin-head">
           <span class="ravin-orb">✦</span>
           <div>
-            <p class="section-label">RAVIN CONTEXT TEST</p>
-            <strong>Ask the Field</strong>
+            <p class="section-label">RAVIN</p>
+            <strong>Context test</strong>
           </div>
         </div>
-        <p>Simulates the context bundle RAVIN would receive from Field.</p>
+        <p>Preview what RAVIN could retrieve from the Field.</p>
         <button class="prompt-chip" data-prompt="What do I know about Nova suspension?">Nova suspension</button>
         <button class="prompt-chip" data-prompt="What is left for Relay launch?">Relay launch</button>
         <button class="prompt-chip" data-prompt="What school work is coming up?">School work</button>
@@ -73,7 +73,7 @@
       </section>
     </aside>
 
-    <main class="graph-shell panel">
+    <main class="graph-shell">
       <div class="graph-toolbar">
         <div>
           <p class="section-label">KNOWLEDGE MAP</p>
@@ -89,20 +89,19 @@
 
       <canvas id="graph" aria-label="Interactive knowledge graph"></canvas>
 
-      <div class="graph-help">
-        <span>Drag to pan</span>
-        <span>Scroll to zoom</span>
-        <span>Click a node to inspect</span>
+      <div class="graph-footer">
+        <span>Drag to pan · Scroll to zoom · Click a node to inspect</span>
+        <span>FIELD · RESONANT ASSIST</span>
       </div>
-    </main>
 
-    <aside id="inspector" class="inspector panel">
-      <div class="empty-state">
-        <div class="empty-icon">✦</div>
-        <h2>Select a node</h2>
-        <p>Click anything in the Field to inspect its source, relationships, and AI-access status.</p>
-      </div>
-    </aside>
+      <aside id="inspector" class="inspector">
+        <div class="empty-state">
+          <div class="empty-icon">✦</div>
+          <h2>Select a node</h2>
+          <p>Open anything in the Field to inspect its content and relationships.</p>
+        </div>
+      </aside>
+    </main>
   </div>
 
   <dialog id="nodeDialog" class="node-dialog">
@@ -110,14 +109,14 @@
       <div class="dialog-head">
         <div>
           <p class="section-label">LOCAL FIELD NODE</p>
-          <h2>Add something to the Field</h2>
+          <h2>Add to Field</h2>
         </div>
         <button type="button" id="closeDialog" class="dialog-close" aria-label="Close">×</button>
       </div>
 
       <label>
         <span>Title</span>
-        <input id="nodeTitle" name="title" maxlength="120" required placeholder="e.g. Nova prototype notes" />
+        <input id="nodeTitle" name="title" maxlength="120" required placeholder="Nova prototype notes" />
       </label>
 
       <div class="form-row">
@@ -133,13 +132,13 @@
         </label>
         <label>
           <span>Cluster</span>
-          <input id="nodeCluster" name="cluster" maxlength="60" placeholder="e.g. Nova" />
+          <input id="nodeCluster" name="cluster" maxlength="60" placeholder="Nova" />
         </label>
       </div>
 
       <label>
         <span>Context</span>
-        <textarea id="nodeSummary" name="summary" maxlength="500" rows="5" placeholder="What should Field/RAVIN know about this?"></textarea>
+        <textarea id="nodeSummary" name="summary" maxlength="500" rows="5" placeholder="What should Field or RAVIN know about this?"></textarea>
       </label>
 
       <label class="checkbox-row">
@@ -149,9 +148,9 @@
 
       <div class="dialog-actions">
         <button type="button" id="cancelDialog" class="secondary-action">Cancel</button>
-        <button type="submit" class="primary-action">Add to Field</button>
+        <button type="submit" class="primary-action">Add node</button>
       </div>
-      <p class="dialog-footnote">Prototype only: custom nodes are stored locally in this browser. Production Field storage is being built separately with Supabase + RLS.</p>
+      <p class="dialog-footnote">Prototype nodes stay in this browser. Production Field data lives behind Supabase RLS.</p>
     </form>
   </dialog>
 
