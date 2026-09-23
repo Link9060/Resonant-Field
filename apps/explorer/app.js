@@ -3,23 +3,23 @@ const ctx = canvas.getContext('2d');
 
 const paletteDark = {
   project: '#f1f1f3',
-  note: '#9b8cff',
-  file: '#6daeea',
-  todo: '#d9a15b',
-  calendar_event: '#6bcaa6',
-  ravin_conversation: '#bd7edb',
-  memory: '#d779a2',
-  chat: '#8f98a8'
+  note: '#aaa7b4',
+  file: '#9ea8b0',
+  todo: '#aaa394',
+  calendar_event: '#98aaa4',
+  ravin_conversation: '#b7a4bf',
+  memory: '#aa9da4',
+  chat: '#8f949c'
 };
 
 const paletteLight = {
   project: '#171719',
-  note: '#6757d8',
-  file: '#2d75b8',
-  todo: '#a86614',
-  calendar_event: '#287f63',
-  ravin_conversation: '#8e50ad',
-  memory: '#a53f6a',
+  note: '#65636d',
+  file: '#59636b',
+  todo: '#686258',
+  calendar_event: '#536a62',
+  ravin_conversation: '#725d7b',
+  memory: '#6b5f65',
   chat: '#59616c'
 };
 
