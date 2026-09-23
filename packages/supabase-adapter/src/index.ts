@@ -162,9 +162,7 @@ export class SupabaseFieldClient implements FieldClient {
 
     let previewUrl: string | null = null;
     const previewBucket = content?.preview_bucket_id ?? file?.bucket_id ?? null;
-    const previewPath = content?.preview_object_path ?? (
-      file?.mime_type?.startsWith?.('image/') ? file?.object_path : null
-    );
+    const previewPath = content?.preview_object_path ?? file?.object_path ?? null;
 
     if (previewBucket && previewPath && this.supabase.storage) {
       const { data, error } = await this.supabase.storage
