@@ -46,6 +46,9 @@
             <button id="signOutField" type="button" role="menuitem">Sign out of Field</button>
           </div>
         </div>
+        <button id="syncField" class="icon-action sync-action" type="button" hidden>
+          <span class="sync-icon">↻</span><span>Sync</span>
+        </button>
         <button id="themeToggle" class="square-action theme-toggle" type="button" aria-label="Switch theme" title="Switch theme">
           <svg class="moon-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.4A8.5 8.5 0 0 1 8.6 4a8.5 8.5 0 1 0 11.4 11.4Z"/></svg>
           <svg class="sun-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v2.2M12 19.8V22M4.93 4.93l1.56 1.56M17.51 17.51l1.56 1.56M2 12h2.2M19.8 12H22M4.93 19.07l1.56-1.56M17.51 6.49l1.56-1.56"/></svg>
@@ -121,6 +124,15 @@
 
       <canvas id="graph" aria-label="Interactive knowledge graph"></canvas>
       <div id="hoverCard" class="hover-card" hidden></div>
+      <div id="buildFieldOverlay" class="build-field-overlay" hidden>
+        <div class="build-field-stage">
+          <p class="section-label">YOUR KNOWLEDGE IS READY</p>
+          <h2>Turn your Relay data into a Field.</h2>
+          <p>Field will organize your notes, tasks, files, events, and relationships into a living map.</p>
+          <button id="buildFieldButton" class="build-field-button" type="button"><span>Build my Field</span></button>
+          <small id="buildFieldMeta"></small>
+        </div>
+      </div>
       <div id="demoBanner" class="demo-banner">
         <span><strong>Demo Field</strong> · Connect Relay to load your real knowledge.</span>
         <button id="connectRelayInline" type="button">Connect Relay</button>
@@ -191,7 +203,7 @@
     </form>
   </dialog>
 
-  <script src="./app.js?v=20260923-6"></script>
-  <script type="module" src="./account.mjs?v=20260923-6"></script>
+  <script src="./app.js?v=20260923-7"></script>
+  <script type="module" src="./account.mjs?v=20260923-7"></script>
 </body>
 </html>
