@@ -2,6 +2,7 @@ const canvas = document.querySelector('#graph');
 const ctx = canvas.getContext('2d');
 
 const paletteDark = {
+  collection: '#f1f1f3',
   project: '#f1f1f3',
   note: '#aaa7b4',
   file: '#9ea8b0',
@@ -13,6 +14,7 @@ const paletteDark = {
 };
 
 const paletteLight = {
+  collection: '#171719',
   project: '#171719',
   note: '#65636d',
   file: '#59636b',
@@ -58,6 +60,7 @@ function graphTheme() {
 }
 
 const labels = {
+  collection: 'Collections',
   project: 'Projects',
   note: 'Notes',
   file: 'Files',
@@ -203,7 +206,7 @@ function getNode(id) { return nodes.find(n => n.id === id); }
 
 function clusterAnchor(cluster) {
   if (!cluster) return null;
-  return nodes.find(node => node.type === 'project' && node.cluster.toLowerCase() === cluster.toLowerCase()) || null;
+  return nodes.find(node => (node.type === 'project' || node.type === 'collection') && node.cluster.toLowerCase() === cluster.toLowerCase()) || null;
 }
 
 function customNodePosition(cluster) {
@@ -241,7 +244,7 @@ for (const node of nodes.filter(node => node.custom)) attachCustomNode(node);
 
 function isVisible(node) {
   if (!node || !state.filters.has(node.type)) return false;
-  if (state.view === 'projects' && node.type !== 'project') return false;
+  if (state.view === 'projects' && node.type !== 'project' && node.type !== 'collection') return false;
   if (state.view === 'recent' && node.recent < 8) return false;
   if (state.query) {
     const q = state.query.toLowerCase();
@@ -287,7 +290,8 @@ function screenToWorld(x,y) {
 }
 
 function nodeRadius(node) {
-  if (node.type === 'project') return 11;
+  if (node.type === 'collection') return 11.5;
+  if ((node.type === 'project' || node.type === 'collection')) return 11;
   if (node.type === 'ravin_conversation') return 8;
   return 6.5;
 }
@@ -352,7 +356,7 @@ function drawNode(node, inFocus = true) {
   const r = nodeRadius(node) * Math.max(.8, Math.min(1.25,state.scale));
   const selected = state.selected === node.id;
   const hovered = state.hovered === node.id;
-  const project = node.type === 'project';
+  const project = (node.type === 'project' || node.type === 'collection');
   const colors = graphTheme();
   const nodeColor = palette()[node.type] || (isDarkTheme() ? '#bdbdc4' : '#55555c');
 
@@ -628,9 +632,10 @@ function runRavin(prompt) {
   const ranked = nodes.map(node => {
     const text = `${node.title} ${node.summary} ${node.cluster} ${node.contentText ?? ''} ${node.extractedPreview ?? ''} ${(node.contentBlocks ?? []).map(block => block.text ?? '').join(' ')}`.toLowerCase();
     let score = tokens.reduce((sum,t)=>sum+(text.includes(t)?2:0),0);
-    if (/nova/.test(prompt.toLowerCase()) && node.cluster==='Nova') score += 3;
-    if (/relay/.test(prompt.toLowerCase()) && node.cluster==='Relay') score += 3;
-    if (/school|homework|coming/.test(prompt.toLowerCase()) && node.cluster==='School') score += 3;
+    const lowerPrompt = prompt.toLowerCase();
+    if (/due|soon|coming|todo|task/.test(lowerPrompt) && (node.type === 'todo' || node.type === 'calendar_event')) score += 3;
+    if (/recent|changed|latest/.test(lowerPrompt)) score += node.recent * .22;
+    if (/work|working|project|focus/.test(lowerPrompt) && (node.type === 'project' || node.type === 'collection')) score += 2.5;
     score += node.recent * .05;
     return {node,score};
   }).filter(x=>x.score>1).sort((a,b)=>b.score-a.score).slice(0,5);
@@ -856,6 +861,30 @@ systemTheme.addEventListener?.('change', event => {
   try { explicit = Boolean(localStorage.getItem('resonant-theme') || localStorage.getItem('relay-theme')); } catch {}
   if (!explicit) applyTheme(event.matches ? 'dark' : 'light', false);
 });
+
+window.FieldExplorer = {
+  nodes,
+  edges,
+  state,
+  labels,
+  paletteDark,
+  paletteLight,
+  seedNodes,
+  setupFilters,
+  setupFilterCounts,
+  syncFilterColors,
+  updateStats,
+  fitGraph,
+  render,
+  selectNode,
+  getNode,
+  visibleNodes,
+  saveCustomNodes,
+  attachCustomNode,
+  closeNodeDialog,
+  nodeDialog,
+  nodeForm,
+};
 
 setupFilters();
 setupFilterCounts();
