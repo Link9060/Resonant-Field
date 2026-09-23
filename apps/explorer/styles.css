@@ -748,3 +748,127 @@ kbd {
 @media (prefers-reduced-motion: reduce) {
   .hover-card { transition: none; }
 }
+
+
+/* ---------- Relay account connection ---------- */
+.account-wrap { position: relative; }
+.account-action {
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  padding: 0 10px;
+  color: var(--ink-muted);
+  font-size: 10px;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+.account-action:hover {
+  background: var(--hover);
+  color: var(--ink);
+  border-color: var(--border-strong);
+}
+.account-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink-faint);
+}
+.account-action.connected .account-dot {
+  background: var(--ink);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ink) 35%, transparent);
+}
+.account-menu {
+  position: absolute;
+  z-index: 30;
+  top: 41px;
+  right: 0;
+  width: 220px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--toolbar);
+  box-shadow: 0 18px 54px rgba(0,0,0,.2);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+.account-menu-copy {
+  padding: 13px 13px 11px;
+  border-bottom: 1px solid var(--border);
+}
+.account-menu-copy strong {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-menu a,
+.account-menu button {
+  width: 100%;
+  display: block;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  padding: 10px 13px;
+  color: var(--ink-muted);
+  text-align: left;
+  text-decoration: none;
+  font-size: 10px;
+}
+.account-menu a:hover,
+.account-menu button:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+.account-menu > :last-child { border-bottom: 0; }
+
+.demo-banner {
+  position: absolute;
+  z-index: 7;
+  left: 50%;
+  bottom: 36px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100% - 36px);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--toolbar);
+  padding: 8px 9px 8px 12px;
+  color: var(--ink-muted);
+  box-shadow: 0 12px 34px rgba(0,0,0,.12);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  font-size: 9px;
+}
+.demo-banner strong { color: var(--ink); font-weight: 600; }
+.demo-banner button {
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 7px;
+  background: var(--ink);
+  padding: 7px 9px;
+  color: var(--canvas);
+  font-size: 9px;
+  font-weight: 650;
+}
+.demo-banner[hidden] { display: none; }
+
+body.field-live .github-action { opacity: .7; }
+body.field-live .ravin-box > p::after {
+  content: " Live account data.";
+  color: var(--ink);
+}
+
+@media (max-width: 760px) {
+  .account-action #accountLabel { max-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .demo-banner { bottom: 52px; }
+}
