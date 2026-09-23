@@ -2,14 +2,14 @@ const canvas = document.querySelector('#graph');
 const ctx = canvas.getContext('2d');
 
 const palette = {
-  project: '#f2f2f4',
-  note: '#9f8cff',
-  file: '#70b7ff',
-  todo: '#ffb86b',
-  calendar_event: '#70e1b5',
-  ravin_conversation: '#d08cff',
-  memory: '#f28fb5',
-  chat: '#8f98a8'
+  project: '#d8d8dc',
+  note: '#bdbdc4',
+  file: '#aeb2bb',
+  todo: '#c8c4bb',
+  calendar_event: '#b7c1bc',
+  ravin_conversation: '#c7becd',
+  memory: '#bfb8c0',
+  chat: '#aeb1b7'
 };
 
 const labels = {
