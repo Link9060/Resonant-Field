@@ -169,7 +169,10 @@ async function loadLiveAccount(user, options = {}) {
       fetchUserState(user.id),
     ]);
 
-    const prepared = await prepareDataset(raw);
+    const syncCutoff = userState?.built_at
+      ? (userState.last_synced_at || userState.built_at)
+      : null;
+    const prepared = await prepareDataset(raw, { cutoff: syncCutoff });
 
     Field.nodes.splice(0, Field.nodes.length, ...prepared.nodes);
     Field.edges.splice(0, Field.edges.length, ...prepared.edges);
@@ -178,7 +181,14 @@ async function loadLiveAccount(user, options = {}) {
     liveMode = true;
 
     resetExplorerForDataset({ preserve: Boolean(options.preserve) });
-    setLiveUi(user, prepared.nodes.length, prepared.edges.length, Boolean(userState?.built_at));
+    setLiveUi(
+      user,
+      prepared.nodes.length,
+      prepared.edges.length,
+      Boolean(userState?.built_at),
+      prepared.pendingNodeCount,
+      prepared.pendingEdgeCount,
+    );
 
     if (!userState?.built_at) {
       showBuildExperience(prepared);
@@ -197,13 +207,35 @@ async function loadLiveAccount(user, options = {}) {
   }
 }
 
-async function prepareDataset({ rawNodes, rawEdges, rawContent, rawFiles, rawPreferences }) {
+async function prepareDataset(
+  { rawNodes, rawEdges, rawContent, rawFiles, rawPreferences },
+  { cutoff = null } = {},
+) {
+  const cutoffMs = cutoff ? new Date(cutoff).getTime() : null;
+  const includedRawNodes = Number.isFinite(cutoffMs)
+    ? rawNodes.filter(row => new Date(row.created_at).getTime() <= cutoffMs)
+    : rawNodes;
+  const includedNodeIds = new Set(includedRawNodes.map(row => row.id));
+  const includedRawEdges = Number.isFinite(cutoffMs)
+    ? rawEdges.filter(edge =>
+        includedNodeIds.has(edge.source_node_id)
+        && includedNodeIds.has(edge.target_node_id)
+        && (!edge.created_at || new Date(edge.created_at).getTime() <= cutoffMs)
+      )
+    : rawEdges.filter(edge =>
+        includedNodeIds.has(edge.source_node_id)
+        && includedNodeIds.has(edge.target_node_id)
+      );
+
+  const pendingNodeCount = rawNodes.length - includedRawNodes.length;
+  const pendingEdgeCount = rawEdges.length - includedRawEdges.length;
+
   const contentByNode = new Map(rawContent.map(row => [row.node_id, row]));
   const fileByNode = new Map(rawFiles.map(row => [row.node_id, row]));
   const preferenceBySource = new Map(rawPreferences.map(row => [`${row.source_product}:${row.source_type}`, row]));
-  const rawNodeById = new Map(rawNodes.map(row => [row.id, row]));
+  const rawNodeById = new Map(includedRawNodes.map(row => [row.id, row]));
 
-  const nodes = rawNodes.map(row => {
+  const nodes = includedRawNodes.map(row => {
     const content = contentByNode.get(row.id);
     const file = fileByNode.get(row.id);
     const preference = preferenceBySource.get(`${row.source_product}:${row.source_type}`);
@@ -230,7 +262,7 @@ async function prepareDataset({ rawNodes, rawEdges, rawContent, rawFiles, rawPre
     return node;
   });
 
-  let edges = rawEdges
+  let edges = includedRawEdges
     .filter(edge => rawNodeById.has(edge.source_node_id) && rawNodeById.has(edge.target_node_id))
     .map(edge => ({
       id: edge.id,
@@ -255,7 +287,14 @@ async function prepareDataset({ rawNodes, rawEdges, rawContent, rawFiles, rawPre
   layoutPreparedNodes(nodes, edges);
   await attachSignedPreviews(nodes, rawContent, rawFiles);
 
-  return { nodes, edges, rawNodes, rawEdges };
+  return {
+    nodes,
+    edges,
+    rawNodes,
+    rawEdges,
+    pendingNodeCount,
+    pendingEdgeCount,
+  };
 }
 
 function addFieldRoot(nodes, edges) {
@@ -812,7 +851,7 @@ async function syncFieldNow(options = {}) {
     }, { onConflict: 'user_id' });
 
     currentUserState = await fetchUserState(currentUser.id);
-    setLiveUi(currentUser, prepared.nodes.length, prepared.edges.length, true);
+    setLiveUi(currentUser, prepared.nodes.length, prepared.edges.length, true, 0, 0);
 
     if (options.selectNodeId && Field.getNode(options.selectNodeId)) {
       setTimeout(() => Field.selectNode(options.selectNodeId), 500);
@@ -926,7 +965,7 @@ function restoreDemo() {
   nodeDialogFootnote.textContent = 'Demo nodes stay in this browser until you connect Relay.';
 }
 
-function setLiveUi(user, nodeCount, edgeCount, built) {
+function setLiveUi(user, nodeCount, edgeCount, built, pendingNodes = 0, pendingEdges = 0) {
   document.body.classList.add('field-live');
   fieldStatus.textContent = 'LIVE';
   accountButton.classList.add('connected');
@@ -934,6 +973,15 @@ function setLiveUi(user, nodeCount, edgeCount, built) {
   accountEmail.textContent = user.email || 'Relay account';
   demoBanner.hidden = true;
   syncButton.hidden = !built;
+  const syncLabel = syncButton.querySelector('span:last-child');
+  if (syncLabel) {
+    syncLabel.textContent = pendingNodes > 0
+      ? `Sync · ${pendingNodes} new`
+      : 'Sync';
+  }
+  syncButton.title = pendingNodes || pendingEdges
+    ? `${pendingNodes} new nodes · ${pendingEdges} new relationships`
+    : 'Sync Field';
   nodeDialogMode.textContent = 'LIVE FIELD NODE';
   nodeDialogFootnote.textContent = 'This node will be stored in your private Field account.';
   document.querySelector('#viewTitle').textContent = `${nodeCount} nodes · ${edgeCount} relationships`;
