@@ -10,7 +10,9 @@ const paletteDark = {
   calendar_event: '#98aaa4',
   ravin_conversation: '#b7a4bf',
   memory: '#aa9da4',
-  chat: '#8f949c'
+  chat: '#8f949c',
+  link: '#9aa0a7',
+  other: '#8f949c'
 };
 
 const paletteLight = {
@@ -22,7 +24,9 @@ const paletteLight = {
   calendar_event: '#536a62',
   ravin_conversation: '#725d7b',
   memory: '#6b5f65',
-  chat: '#59616c'
+  chat: '#59616c',
+  link: '#59616c',
+  other: '#67676d'
 };
 
 function isDarkTheme() {
@@ -68,7 +72,9 @@ const labels = {
   calendar_event: 'Calendar',
   ravin_conversation: 'RAVIN',
   memory: 'Memory',
-  chat: 'Chats'
+  chat: 'Chats',
+  link: 'Links',
+  other: 'Other'
 };
 
 const demoScreenshot = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`
