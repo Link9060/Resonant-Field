@@ -253,6 +253,8 @@ function isVisible(node) {
 
 function visibleNodes() { return nodes.filter(isVisible); }
 
+let initialFitDone = false;
+
 function resize() {
   const rect = canvas.getBoundingClientRect();
   dpr = Math.min(devicePixelRatio || 1, 2);
@@ -261,7 +263,13 @@ function resize() {
   canvas.width = Math.max(1, Math.floor(width * dpr));
   canvas.height = Math.max(1, Math.floor(height * dpr));
   ctx.setTransform(dpr,0,0,dpr,0,0);
-  render();
+
+  if (!initialFitDone && width > 0 && height > 0) {
+    initialFitDone = true;
+    fitGraph();
+  } else {
+    render();
+  }
 }
 
 function worldToScreen(n) {
@@ -375,7 +383,7 @@ function selectNode(id) {
   const related = relatedEdges.map(e => ({ edge:e, node:getNode(e.a === id ? e.b : e.a) })).filter(x => x.node);
   inspector.classList.add('open');
   inspector.innerHTML = `
-    <div class="node-type"><i class="dot" style="color:${palette[node.type]};background:${palette[node.type]}"></i>${labels[node.type]}</div>
+    <div class="node-type"><i class="dot" style="color:${palette()[node.type]};background:${palette()[node.type]}"></i>${labels[node.type]}</div>
     <h2 class="node-title">${escapeHtml(node.title)}</h2>
     <p class="node-summary">${escapeHtml(node.summary)}</p>
 
@@ -570,7 +578,7 @@ function runRavin(prompt) {
   const contextEdges = edges.filter(e=>seedIds.has(e.a)||seedIds.has(e.b)).slice(0,6);
 
   result.hidden = false;
-  result.innerHTML = `<strong>Retrieved ${ranked.length} nodes</strong><br>${ranked.map(x=>escapeHtml(x.node.title)).join(' · ')}<br><br><span style="color:#666672">${contextEdges.length} related edges would also be passed to RAVIN.</span>`;
+  result.innerHTML = `<strong>Retrieved ${ranked.length} nodes</strong><br>${ranked.map(x=>escapeHtml(x.node.title)).join(' · ')}<br><br><span style="color:var(--ink-faint)">${contextEdges.length} related edges would also be passed to RAVIN.</span>`;
 
   state.query = '';
   document.querySelector('#searchInput').value = '';
@@ -638,6 +646,7 @@ nodeForm.addEventListener('submit', event => {
   setupFilterCounts();
   updateStats();
   closeNodeDialog();
+  fitGraph();
   selectNode(node.id);
 });
 
