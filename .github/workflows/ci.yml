@@ -34,4 +34,6 @@ jobs:
         run: npm test
 
       - name: Check Explorer JavaScript
-        run: node --check apps/explorer/app.js
+        run: |
+          node --check apps/explorer/app.js
+          node --check apps/explorer/account.mjs
