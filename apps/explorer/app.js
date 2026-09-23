@@ -313,11 +313,12 @@ function nodeRadius(node) {
 
 function selectedNeighborhood() {
   const ids = new Set();
-  if (!state.selected) return ids;
-  ids.add(state.selected);
+  const focusId = state.selected || state.hovered;
+  if (!focusId) return ids;
+  ids.add(focusId);
   for (const edge of edges) {
-    if (edge.a === state.selected) ids.add(edge.b);
-    if (edge.b === state.selected) ids.add(edge.a);
+    if (edge.a === focusId) ids.add(edge.b);
+    if (edge.b === focusId) ids.add(edge.a);
   }
   return ids;
 }
@@ -346,8 +347,9 @@ function render(now = performance.now()) {
       x: a.x + (bFull.x - a.x) * edgeProgress,
       y: a.y + (bFull.y - a.y) * edgeProgress
     };
-    const selectedEdge = state.selected && (edge.a === state.selected || edge.b === state.selected);
-    const dimmed = state.selected && !selectedEdge;
+    const focusId = state.selected || state.hovered;
+    const selectedEdge = focusId && (edge.a === focusId || edge.b === focusId);
+    const dimmed = focusId && !selectedEdge;
     ctx.beginPath();
     ctx.moveTo(a.x,a.y);
     ctx.lineTo(b.x,b.y);
@@ -364,7 +366,7 @@ function render(now = performance.now()) {
   for (const node of currentlyVisible) {
     const visual = animatedNodeState(node, now);
     if (visual.alpha <= 0) continue;
-    drawNode(node, !state.selected || neighborhood.has(node.id), visual);
+    drawNode(node, !(state.selected || state.hovered) || neighborhood.has(node.id), visual);
   }
 
   if (state.animation) {
@@ -676,6 +678,33 @@ function selectNode(id) {
   }
 
   const node = getNode(id);
+
+  if (node?.virtual) {
+    const childEdges = edges.filter(edge => edge.type === 'contains' && edge.a === id);
+    const childNodes = {};
+    const childEdgePlan = {};
+    childEdges.forEach((edge, index) => {
+      childNodes[edge.b] = {
+        delay: 45 + index * 32,
+        duration: 430,
+        fromId: id,
+      };
+      childEdgePlan[edge.id] = {
+        delay: Math.max(20, index * 32),
+        duration: 340,
+      };
+    });
+    if (childEdges.length) {
+      fitGraph();
+      startRevealAnimation({
+        mode: 'cluster-expand',
+        duration: Math.max(700, childEdges.length * 32 + 560),
+        nodes: childNodes,
+        edges: childEdgePlan,
+      });
+    }
+  }
+
   const relatedEdges = edges.filter(e => e.a === id || e.b === id).sort((a,b)=>b.strength-a.strength);
   const related = relatedEdges.map(e => ({ edge:e, node:getNode(e.a === id ? e.b : e.a) })).filter(x => x.node);
   inspector.classList.add('open');
