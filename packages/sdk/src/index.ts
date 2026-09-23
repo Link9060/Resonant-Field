@@ -35,6 +35,7 @@ export interface FieldClient {
   search(request: FieldSearchRequest): Promise<FieldSearchHit[]>;
   getNode(nodeId: string): Promise<unknown>;
   getRelated(nodeId: string): Promise<unknown[]>;
+  getNodeContent?(nodeId: string): Promise<unknown>;
   getContext?(request: FieldContextRequest): Promise<FieldContextBundle>;
 }
 
