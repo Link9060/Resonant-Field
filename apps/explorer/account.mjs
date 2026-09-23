@@ -735,12 +735,22 @@ async function buildMyField() {
   Field.startRevealAnimation(plan);
   Field.fitGraph();
 
-  await supabase.from('field_user_state').upsert({
+  const builtAt = new Date().toISOString();
+  const { error: buildStateError } = await supabase.from('field_user_state').upsert({
     user_id: currentUser.id,
-    built_at: new Date().toISOString(),
-    last_synced_at: new Date().toISOString(),
+    built_at: builtAt,
+    last_synced_at: builtAt,
     layout_version: BUILD_LAYOUT_VERSION,
   }, { onConflict: 'user_id' });
+
+  if (buildStateError) {
+    console.error('Field build checkpoint failed', buildStateError);
+    buildOverlay.classList.remove('building', 'releasing');
+    buildButton.disabled = false;
+    fieldStatus.textContent = 'ERROR';
+    showSyncFlash('Could not save Field build state');
+    return;
+  }
 
   currentUserState = await fetchUserState(currentUser.id);
 
@@ -808,6 +818,8 @@ async function syncFieldNow(options = {}) {
   syncing = true;
   syncButton.disabled = true;
   syncButton.classList.add('syncing');
+  const syncingLabel = syncButton.querySelector('span:last-child');
+  if (syncingLabel) syncingLabel.textContent = 'Syncing…';
   fieldStatus.textContent = 'SYNCING';
 
   const oldNodeIds = new Set(Field.nodes.map(node => node.id));
@@ -843,12 +855,14 @@ async function syncFieldNow(options = {}) {
     }
 
     const syncedAt = new Date().toISOString();
-    await supabase.from('field_user_state').upsert({
+    const { error: syncStateError } = await supabase.from('field_user_state').upsert({
       user_id: currentUser.id,
       built_at: currentUserState?.built_at || syncedAt,
       last_synced_at: syncedAt,
       layout_version: BUILD_LAYOUT_VERSION,
     }, { onConflict: 'user_id' });
+
+    if (syncStateError) throw syncStateError;
 
     currentUserState = await fetchUserState(currentUser.id);
     setLiveUi(currentUser, prepared.nodes.length, prepared.edges.length, true, 0, 0);
