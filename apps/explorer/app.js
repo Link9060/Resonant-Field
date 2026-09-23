@@ -369,12 +369,13 @@ function hitTest(x,y) {
 }
 
 function selectNode(id) {
+  const previous = state.selected;
   state.selected = id;
   const inspector = document.querySelector('#inspector');
   if (!id) {
     inspector.classList.remove('open');
     inspector.innerHTML = `<div class="empty-state"><div class="empty-icon">✦</div><h2>Select a node</h2><p>Click anything in the Field to inspect its source, relationships, and AI-access status.</p></div>`;
-    render();
+    if (previous) fitGraph(); else render();
     return;
   }
 
@@ -418,6 +419,7 @@ function selectNode(id) {
     </div>
   `;
 
+  if (!previous) fitGraph();
   inspector.querySelectorAll('[data-node]').forEach(btn => btn.addEventListener('click', () => selectNode(btn.dataset.node)));
   inspector.querySelectorAll('[data-delete-node]').forEach(btn => btn.addEventListener('click', () => {
     const idToDelete = btn.dataset.deleteNode;
@@ -481,14 +483,16 @@ function syncFilterColors() {
   });
 }
 
-function applyTheme(theme) {
+function applyTheme(theme, persist = true) {
   const dark = theme === 'dark';
   document.documentElement.classList.toggle('dark', dark);
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-  try {
-    localStorage.setItem('resonant-theme', dark ? 'dark' : 'light');
-    localStorage.setItem('relay-theme', dark ? 'dark' : 'light');
-  } catch {}
+  if (persist) {
+    try {
+      localStorage.setItem('resonant-theme', dark ? 'dark' : 'light');
+      localStorage.setItem('relay-theme', dark ? 'dark' : 'light');
+    } catch {}
+  }
   const toggle = document.querySelector('#themeToggle');
   if (toggle) {
     toggle.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
@@ -539,15 +543,20 @@ function fitGraph() {
   const maxY = Math.max(...ys);
   const spanX = Math.max(120, maxX - minX);
   const spanY = Math.max(120, maxY - minY);
-  const paddingX = Math.min(150, Math.max(72, width * .11));
-  const paddingY = Math.min(120, Math.max(70, height * .12));
-  const scaleX = Math.max(.1, (width - paddingX * 2) / spanX);
+
+  const inspectorWidth = state.selected ? Math.min(360, width * .88) : 0;
+  const availableWidth = Math.max(280, width - inspectorWidth);
+  const paddingX = Math.min(150, Math.max(64, availableWidth * .1));
+  const paddingY = Math.min(120, Math.max(64, height * .11));
+  const scaleX = Math.max(.1, (availableWidth - paddingX * 2) / spanX);
   const scaleY = Math.max(.1, (height - paddingY * 2) / spanY);
 
   state.scale = Math.max(.5, Math.min(1.45, Math.min(scaleX, scaleY)));
   const centerX = (minX + maxX) / 2;
   const centerY = (minY + maxY) / 2;
-  state.offsetX = -centerX * state.scale;
+  const targetX = availableWidth / 2;
+
+  state.offsetX = targetX - width / 2 - centerX * state.scale;
   state.offsetY = -centerY * state.scale + 8;
   updateZoom();
   render();
@@ -658,7 +667,7 @@ document.querySelector('#searchInput').addEventListener('input', e => {
   state.query = e.target.value.trim();
   if (state.selected && !isVisible(getNode(state.selected))) selectNode(null);
   updateStats();
-  render();
+  fitGraph();
 });
 
 document.addEventListener('keydown', e => {
@@ -736,7 +745,7 @@ canvas.addEventListener('mouseleave', () => { if (!state.dragging) { state.hover
 setupFilters();
 setupFilterCounts();
 syncFilterColors();
-applyTheme(isDarkTheme() ? 'dark' : 'light');
+applyTheme(isDarkTheme() ? 'dark' : 'light', false);
 updateStats();
 updateZoom();
 new ResizeObserver(resize).observe(canvas);
