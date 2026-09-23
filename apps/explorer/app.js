@@ -292,28 +292,47 @@ function nodeRadius(node) {
   return 6.5;
 }
 
+function selectedNeighborhood() {
+  const ids = new Set();
+  if (!state.selected) return ids;
+  ids.add(state.selected);
+  for (const edge of edges) {
+    if (edge.a === state.selected) ids.add(edge.b);
+    if (edge.b === state.selected) ids.add(edge.a);
+  }
+  return ids;
+}
+
+function isSemanticEdge(edge) {
+  return edge.type === 'context' || edge.type === 'cross-project' || edge.type === 'semantic_related';
+}
+
 function render() {
   ctx.clearRect(0,0,width,height);
   drawBackdrop();
   const visible = new Set(visibleNodes().map(n => n.id));
   const colors = graphTheme();
+  const neighborhood = selectedNeighborhood();
 
   for (const edge of edges) {
     if (!visible.has(edge.a) || !visible.has(edge.b)) continue;
     const a = worldToScreen(getNode(edge.a));
     const b = worldToScreen(getNode(edge.b));
     const selectedEdge = state.selected && (edge.a === state.selected || edge.b === state.selected);
+    const dimmed = state.selected && !selectedEdge;
     ctx.beginPath();
     ctx.moveTo(a.x,a.y);
     ctx.lineTo(b.x,b.y);
-    ctx.lineWidth = selectedEdge ? 1.25 : .62;
+    ctx.lineWidth = selectedEdge ? 1.2 : .62;
+    ctx.setLineDash(isSemanticEdge(edge) ? [4,5] : []);
     ctx.strokeStyle = selectedEdge
       ? colors.edgeSelected
-      : `rgba(${colors.edge[0]},${colors.edge[1]},${colors.edge[2]},${.075 + edge.strength*.085})`;
+      : `rgba(${colors.edge[0]},${colors.edge[1]},${colors.edge[2]},${dimmed ? .018 : .07 + edge.strength*.075})`;
     ctx.stroke();
+    ctx.setLineDash([]);
   }
 
-  for (const node of visibleNodes()) drawNode(node);
+  for (const node of visibleNodes()) drawNode(node, !state.selected || neighborhood.has(node.id));
 }
 
 function drawBackdrop() {
@@ -328,34 +347,63 @@ function drawBackdrop() {
   }
 }
 
-function drawNode(node) {
+function drawNode(node, inFocus = true) {
   const p = worldToScreen(node);
   const r = nodeRadius(node) * Math.max(.8, Math.min(1.25,state.scale));
   const selected = state.selected === node.id;
   const hovered = state.hovered === node.id;
+  const project = node.type === 'project';
   const colors = graphTheme();
   const nodeColor = palette()[node.type] || (isDarkTheme() ? '#bdbdc4' : '#55555c');
 
   ctx.beginPath();
-  ctx.arc(p.x,p.y,r,0,Math.PI*2);
+  ctx.arc(p.x,p.y,r + (hovered ? 1.2 : 0),0,Math.PI*2);
   ctx.fillStyle = selected ? colors.selectedNode : nodeColor;
-  ctx.globalAlpha = selected ? 1 : node.type === 'project' ? .96 : .9;
+  ctx.globalAlpha = selected ? 1 : !inFocus ? .16 : project ? .96 : hovered ? 1 : .86;
   ctx.fill();
   ctx.globalAlpha = 1;
 
   ctx.beginPath();
-  ctx.arc(p.x,p.y,r + (selected ? 4 : 3),0,Math.PI*2);
+  ctx.arc(p.x,p.y,r + (selected ? 4 : hovered ? 3.8 : 3),0,Math.PI*2);
   ctx.strokeStyle = selected ? colors.ringSelected : colors.ring;
+  ctx.globalAlpha = !inFocus ? .18 : 1;
   ctx.lineWidth = selected ? 1.15 : .85;
   ctx.stroke();
+  ctx.globalAlpha = 1;
 
-  if (state.scale > .62 || node.type === 'project' || selected || hovered) {
-    ctx.font = node.type === 'project' ? '600 11px Inter, system-ui' : '500 9px Inter, system-ui';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillStyle = selected || hovered ? colors.activeLabel : node.type === 'project' ? colors.hubLabel : colors.label;
-    ctx.fillText(node.title, p.x, p.y + r + 7);
+  const showLabel =
+    selected ||
+    hovered ||
+    project ||
+    (state.selected && inFocus) ||
+    (state.scale > .98 && node.recent >= 8);
+
+  if (showLabel && inFocus) {
+    const label = truncateCanvasLabel(node.title, project ? 28 : 24);
+    ctx.font = project ? '600 11px Inter, system-ui' : '500 9px Inter, system-ui';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = selected || hovered ? colors.activeLabel : project ? colors.hubLabel : colors.label;
+
+    let labelX = p.x;
+    let labelY = p.y + r + 12;
+    if (p.x < 105) {
+      ctx.textAlign = 'left';
+      labelX = p.x + r + 9;
+      labelY = p.y;
+    } else if (p.x > width - 105) {
+      ctx.textAlign = 'right';
+      labelX = p.x - r - 9;
+      labelY = p.y;
+    } else {
+      ctx.textAlign = 'center';
+    }
+    ctx.fillText(label, labelX, labelY);
   }
+}
+
+function truncateCanvasLabel(value, max) {
+  if (!value || value.length <= max) return value || '';
+  return value.slice(0, Math.max(1, max - 1)) + '…';
 }
 
 function hitTest(x,y) {
@@ -384,7 +432,10 @@ function selectNode(id) {
   const related = relatedEdges.map(e => ({ edge:e, node:getNode(e.a === id ? e.b : e.a) })).filter(x => x.node);
   inspector.classList.add('open');
   inspector.innerHTML = `
-    <div class="node-type"><i class="dot" style="color:${palette()[node.type]};background:${palette()[node.type]}"></i>${labels[node.type]}</div>
+    <div class="inspector-head">
+      <div class="node-type"><i class="dot" style="color:${palette()[node.type]};background:${palette()[node.type]}"></i>${labels[node.type]}</div>
+      <button class="inspector-close" type="button" aria-label="Close inspector" title="Close">×</button>
+    </div>
     <h2 class="node-title">${escapeHtml(node.title)}</h2>
     <p class="node-summary">${escapeHtml(node.summary)}</p>
 
@@ -420,6 +471,7 @@ function selectNode(id) {
   `;
 
   if (!previous) fitGraph();
+  inspector.querySelector('.inspector-close')?.addEventListener('click', () => selectNode(null));
   inspector.querySelectorAll('[data-node]').forEach(btn => btn.addEventListener('click', () => selectNode(btn.dataset.node)));
   inspector.querySelectorAll('[data-delete-node]').forEach(btn => btn.addEventListener('click', () => {
     const idToDelete = btn.dataset.deleteNode;
@@ -676,6 +728,16 @@ document.addEventListener('keydown', e => {
     document.querySelector('#searchInput').focus();
   }
   if (e.key === 'Escape') selectNode(null);
+  if (
+    e.key.toLowerCase() === 'f' &&
+    !e.metaKey &&
+    !e.ctrlKey &&
+    !e.altKey &&
+    !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)
+  ) {
+    e.preventDefault();
+    fitGraph();
+  }
 });
 
 document.querySelector('#resetFilters').addEventListener('click', () => {
@@ -701,6 +763,44 @@ document.querySelector('#centerGraph').addEventListener('click', centerGraph);
 document.querySelector('#zoomIn').addEventListener('click', () => { state.scale=Math.min(2.2,state.scale*1.15); updateZoom(); render(); });
 document.querySelector('#zoomOut').addEventListener('click', () => { state.scale=Math.max(.45,state.scale/1.15); updateZoom(); render(); });
 
+const hoverCard = document.querySelector('#hoverCard');
+
+function hideHoverCard() {
+  hoverCard.classList.remove('visible');
+  hoverCard.hidden = true;
+}
+
+function showHoverCard(node, x, y) {
+  if (!node || state.dragging) {
+    hideHoverCard();
+    return;
+  }
+  const relationCount = edges.filter(edge => edge.a === node.id || edge.b === node.id).length;
+  hoverCard.innerHTML = `
+    <div class="hover-type">${escapeHtml(labels[node.type] || node.type)}</div>
+    <strong>${escapeHtml(node.title)}</strong>
+    <span>${escapeHtml(node.source)} · ${relationCount} relationship${relationCount === 1 ? '' : 's'}</span>
+  `;
+  hoverCard.hidden = false;
+  const cardWidth = 190;
+  const cardHeight = 74;
+  hoverCard.style.left = Math.max(10, Math.min(width - cardWidth - 10, x + 14)) + 'px';
+  hoverCard.style.top = Math.max(10, Math.min(height - cardHeight - 10, y + 14)) + 'px';
+  requestAnimationFrame(() => hoverCard.classList.add('visible'));
+}
+
+function focusNode(node) {
+  if (!node) return;
+  selectNode(node.id);
+  const inspectorWidth = Math.min(360, width * .88);
+  const availableWidth = Math.max(280, width - inspectorWidth);
+  state.scale = Math.max(1.05, Math.min(1.5, state.scale * 1.12));
+  state.offsetX = availableWidth / 2 - width / 2 - node.x * state.scale;
+  state.offsetY = -node.y * state.scale;
+  updateZoom();
+  render();
+}
+
 canvas.addEventListener('mousemove', e => {
   const rect = canvas.getBoundingClientRect();
   const x=e.clientX-rect.left, y=e.clientY-rect.top;
@@ -713,6 +813,7 @@ canvas.addEventListener('mousemove', e => {
   const hit = hitTest(x,y);
   const id = hit?.id || null;
   if (id !== state.hovered) { state.hovered=id; render(); }
+  if (hit) showHoverCard(hit, x, y); else hideHoverCard();
   canvas.style.cursor = hit ? 'pointer' : 'grab';
 });
 
@@ -721,6 +822,7 @@ canvas.addEventListener('mousedown', e => {
   const x=e.clientX-rect.left, y=e.clientY-rect.top;
   const hit=hitTest(x,y);
   if (hit) { selectNode(hit.id); return; }
+  hideHoverCard();
   state.dragging=true;
   state.dragStart={x,y,ox:state.offsetX,oy:state.offsetY};
   canvas.classList.add('dragging');
@@ -740,7 +842,20 @@ canvas.addEventListener('wheel', e => {
   updateZoom(); render();
 },{passive:false});
 
-canvas.addEventListener('mouseleave', () => { if (!state.dragging) { state.hovered=null; render(); } });
+canvas.addEventListener('mouseleave', () => { hideHoverCard(); if (!state.dragging) { state.hovered=null; render(); } });
+
+canvas.addEventListener('dblclick', e => {
+  const rect = canvas.getBoundingClientRect();
+  const hit = hitTest(e.clientX - rect.left, e.clientY - rect.top);
+  if (hit) focusNode(hit);
+});
+
+const systemTheme = matchMedia('(prefers-color-scheme: dark)');
+systemTheme.addEventListener?.('change', event => {
+  let explicit = false;
+  try { explicit = Boolean(localStorage.getItem('resonant-theme') || localStorage.getItem('relay-theme')); } catch {}
+  if (!explicit) applyTheme(event.matches ? 'dark' : 'light', false);
+});
 
 setupFilters();
 setupFilterCounts();
