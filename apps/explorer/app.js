@@ -423,6 +423,13 @@ function animatedEdgeProgress(edge, now) {
 
 function startRevealAnimation(plan = {}) {
   cancelAnimationFrame(state.animationFrame);
+  if (document.documentElement.dataset.arrowMotion === 'reduce' ||
+      (!document.documentElement.dataset.arrowMotion && matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+    state.animation = null;
+    state.animationFrame = 0;
+    render();
+    return;
+  }
   state.animation = {
     start: performance.now(),
     duration: Math.max(500, plan.duration ?? 2200),
@@ -946,6 +953,10 @@ function closeNodeDialog() {
 
 document.querySelector('#themeToggle')?.addEventListener('click', () => {
   applyTheme(isDarkTheme() ? 'light' : 'dark');
+});
+
+window.addEventListener('arrow:motionchange', event => {
+  if (event.detail?.reduced) stopRevealAnimation();
 });
 
 window.addEventListener('arrow:themechange', () => {

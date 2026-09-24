@@ -819,6 +819,8 @@ async function syncFieldNow(options = {}) {
   syncButton.disabled = true;
   syncButton.classList.add('syncing');
   const syncingLabel = syncButton.querySelector('span:last-child');
+  const previousSyncLabel = syncingLabel?.textContent || 'Sync';
+  let syncSucceeded = false;
   if (syncingLabel) syncingLabel.textContent = 'Syncing…';
   fieldStatus.textContent = 'SYNCING';
 
@@ -866,6 +868,7 @@ async function syncFieldNow(options = {}) {
 
     currentUserState = await fetchUserState(currentUser.id);
     setLiveUi(currentUser, prepared.nodes.length, prepared.edges.length, true, 0, 0);
+    syncSucceeded = true;
 
     if (options.selectNodeId && Field.getNode(options.selectNodeId)) {
       setTimeout(() => Field.selectNode(options.selectNodeId), 500);
@@ -877,7 +880,8 @@ async function syncFieldNow(options = {}) {
     syncing = false;
     syncButton.disabled = false;
     syncButton.classList.remove('syncing');
-    fieldStatus.textContent = 'LIVE';
+    if (syncingLabel && syncingLabel.textContent === 'Syncing…') syncingLabel.textContent = previousSyncLabel;
+    if (liveMode) fieldStatus.textContent = syncSucceeded ? 'LIVE' : 'SYNC FAILED';
   }
 }
 
