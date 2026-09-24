@@ -10,8 +10,13 @@
   <script>
     (function () {
       try {
+        var arrowTheme = localStorage.getItem('arrow_os_theme_v1');
         var stored = localStorage.getItem('resonant-theme') || localStorage.getItem('relay-theme');
-        var theme = stored || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        var theme = arrowTheme === 'light' || arrowTheme === 'dark'
+          ? arrowTheme
+          : arrowTheme === 'system'
+            ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+            : stored || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
         document.documentElement.classList.toggle('dark', theme === 'dark');
         document.documentElement.dataset.theme = theme;
       } catch (error) {}
