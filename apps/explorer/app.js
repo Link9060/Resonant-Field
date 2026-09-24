@@ -672,7 +672,7 @@ function selectNode(id) {
   const inspector = document.querySelector('#inspector');
   if (!id) {
     inspector.classList.remove('open');
-    inspector.innerHTML = `<div class="empty-state"><div class="empty-icon">✦</div><h2>Select a node</h2><p>Click anything in the Field to inspect its source, relationships, and AI-access status.</p></div>`;
+    inspector.innerHTML = `<div class="empty-state"><div class="empty-icon">✦</div><h2>Select a node</h2><p>Click anything in Atlas to inspect its source, relationships, and AI-access status.</p></div>`;
     if (previous) fitGraph(); else render();
     return;
   }
@@ -965,7 +965,7 @@ nodeForm.addEventListener('submit', event => {
   const type = document.querySelector('#nodeType').value;
   const clusterInput = document.querySelector('#nodeCluster').value.trim();
   const cluster = clusterInput || (type === 'project' ? title : 'Personal');
-  const summary = document.querySelector('#nodeSummary').value.trim() || 'User-created Field node.';
+  const summary = document.querySelector('#nodeSummary').value.trim() || 'User-created Atlas node.';
   const position = customNodePosition(cluster);
 
   const node = {
@@ -976,7 +976,7 @@ nodeForm.addEventListener('submit', event => {
     contentKind: 'text',
     contentText: summary,
     cluster,
-    source: 'Field Explorer',
+    source: 'Atlas',
     ai: document.querySelector('#nodeRavin').checked,
     recent: 10,
     x: position.x,
@@ -1140,7 +1140,7 @@ systemTheme.addEventListener?.('change', event => {
   if (!explicit) applyTheme(event.matches ? 'dark' : 'light', false);
 });
 
-window.FieldExplorer = {
+window.Atlas = window.FieldExplorer = {
   nodes,
   edges,
   state,
