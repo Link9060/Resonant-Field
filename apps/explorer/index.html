@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="Resonant Field knowledge explorer." />
+  <meta name="description" content="Atlas living knowledge map powered by Resonant Field." />
   <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000" />
   <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
-  <title>Field — Resonant Assist</title>
+  <title>Atlas — Resonant Assist</title>
   <script>
     (function () {
       try {
@@ -43,18 +43,37 @@
               <strong id="accountEmail">Not connected</strong>
             </div>
             <a id="openRelayAccount" href="https://resonantrelay.org/" role="menuitem">Open Relay</a>
-            <button id="signOutField" type="button" role="menuitem">Sign out of Field</button>
+            <button id="signOutField" type="button" role="menuitem">Sign out of Atlas</button>
           </div>
         </div>
         <button id="syncField" class="icon-action sync-action" type="button" hidden>
           <span class="sync-icon">↻</span><span>Sync</span>
         </button>
-        <button id="themeToggle" class="square-action theme-toggle" type="button" aria-label="Switch theme" title="Switch theme">
-          <svg class="moon-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.4A8.5 8.5 0 0 1 8.6 4a8.5 8.5 0 1 0 11.4 11.4Z"/></svg>
-          <svg class="sun-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v2.2M12 19.8V22M4.93 4.93l1.56 1.56M17.51 17.51l1.56 1.56M2 12h2.2M19.8 12H22M4.93 19.07l1.56-1.56M17.51 6.49l1.56-1.56"/></svg>
-        </button>
         <button id="addNode" class="icon-action action-button">+ <span>Add node</span></button>
         <a class="square-action github-action" href="https://github.com/Link9060/Resonant-Field" aria-label="Open Field source on GitHub" title="Source">↗</a>
+        <div class="arrow-system-anchor">
+          <div class="arrow-system-island" id="arrowSystemIsland" data-open="false" data-pinned="false">
+            <div class="arrow-system-content" id="arrowSystemContent" aria-hidden="true">
+              <a class="arrow-system-control" id="arrowOrbitLink" href="https://link9060.github.io/Resonant-Orbit/?from=atlas" aria-label="Orbit" title="Orbit">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="2.2"/><ellipse cx="12" cy="12" rx="8.2" ry="3.7" fill="none"/><ellipse cx="12" cy="12" rx="3.7" ry="8.2" fill="none"/></svg><span>Orbit</span>
+              </a>
+              <a class="arrow-system-control" href="https://link9060.github.io/Resonant-Relay/notes/" aria-label="Notes" title="Notes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 4.5h11v15h-11zM9 8h6M9 11.5h6M9 15h4" fill="none"/></svg><span>Notes</span></a>
+              <a class="arrow-system-control" href="https://link9060.github.io/Resonant-Relay/todo/" aria-label="Tasks" title="Tasks"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5.5 7.5 1.8 1.8 3.2-3.4M12.5 8h6M5.5 15l1.8 1.8 3.2-3.4M12.5 15.5h6" fill="none"/></svg><span>Tasks</span></a>
+              <a class="arrow-system-control" href="https://link9060.github.io/Resonant-Relay/focus/" aria-label="Focus" title="Focus"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6.5" fill="none"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3" fill="none"/></svg><span>Focus</span></a>
+              <a class="arrow-system-control" href="https://link9060.github.io/Resonant-Relay/calendar/" aria-label="Calendar" title="Calendar"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="6" width="15" height="13" rx="2" fill="none"/><path d="M8 3.8v4.4M16 3.8v4.4M4.5 10h15" fill="none"/></svg><span>Calendar</span></a>
+              <a class="arrow-system-control" href="https://link9060.github.io/Resonant-Relay/quicklinks/" aria-label="Links" title="Links"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 14.5 14.5 9.5M8 16l-1.2 1.2a3.1 3.1 0 0 1-4.4-4.4L6.2 9a3.1 3.1 0 0 1 4.4 0M16 8l1.2-1.2a3.1 3.1 0 0 1 4.4 4.4L17.8 15a3.1 3.1 0 0 1-4.4 0" fill="none"/></svg><span>Links</span></a>
+              <span class="arrow-system-divider" aria-hidden="true"></span>
+              <button id="themeToggle" class="arrow-system-icon-control theme-toggle" type="button" aria-label="Switch theme" title="Switch theme">
+                <svg class="moon-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.4A8.5 8.5 0 0 1 8.6 4a8.5 8.5 0 1 0 11.4 11.4Z"/></svg>
+                <svg class="sun-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v2.2M12 19.8V22M4.93 4.93l1.56 1.56M17.51 17.51l1.56 1.56M2 12h2.2M19.8 12H22M4.93 19.07l1.56-1.56M17.51 6.49l1.56-1.56"/></svg>
+              </button>
+              <a class="arrow-system-icon-control" href="https://link9060.github.io/Resonant-Relay/profile/" aria-label="ARROW settings" title="ARROW settings"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" fill="none"/><path d="M12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2M6 6l1.5 1.5M16.5 16.5 18 18M18 6l-1.5 1.5M7.5 16.5 6 18" fill="none"/></svg></a>
+              <span class="arrow-system-divider" aria-hidden="true"></span>
+              <span class="arrow-system-name" aria-hidden="true">ARROW</span>
+            </div>
+            <button class="arrow-system-trigger" id="arrowSystemTrigger" type="button" aria-label="Open ARROW controls" aria-expanded="false" title="ARROW"><span class="arrow-system-mark" aria-hidden="true"></span></button>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -62,7 +81,7 @@
       <div class="sidebar-section">
         <div class="search-wrap">
           <span class="search-icon">⌕</span>
-          <input id="searchInput" type="search" autocomplete="off" placeholder="Search Field" />
+          <input id="searchInput" type="search" autocomplete="off" placeholder="Search Atlas" />
           <kbd>⌘K</kbd>
         </div>
       </div>
@@ -97,7 +116,7 @@
           <span class="ravin-orb">✦</span>
           <div>
             <p class="section-label">RAVIN</p>
-            <strong>Ask your Field</strong>
+            <strong>Ask Atlas</strong>
           </div>
         </div>
         <p>Retrieve useful context from the knowledge currently in view.</p>
@@ -127,20 +146,20 @@
       <div id="buildFieldOverlay" class="build-field-overlay" hidden>
         <div class="build-field-stage">
           <p class="section-label">YOUR KNOWLEDGE IS READY</p>
-          <h2>Turn your Relay data into a Field.</h2>
-          <p>Field will organize your notes, tasks, files, events, and relationships into a living map.</p>
+          <h2>Turn your Relay data into Atlas.</h2>
+          <p>Atlas will organize your notes, tasks, files, events, and relationships into a living map.</p>
           <button id="buildFieldButton" class="build-field-button" type="button"><span>Build my Field</span></button>
           <small id="buildFieldMeta"></small>
         </div>
       </div>
       <div id="demoBanner" class="demo-banner">
-        <span><strong>Demo Field</strong> · Connect Relay to load your real knowledge.</span>
+        <span><strong>Demo Atlas</strong> · Connect Relay to load your real knowledge.</span>
         <button id="connectRelayInline" type="button">Connect Relay</button>
       </div>
 
       <div class="graph-footer">
         <span>Click inspect · Double-click focus · F fit · ⌘K search</span>
-        <span>FIELD · RESONANT ASSIST</span>
+        <span>ATLAS · FIELD ENGINE</span>
       </div>
 
       <aside id="inspector" class="inspector">
@@ -203,7 +222,8 @@
     </form>
   </dialog>
 
-  <script src="./app.js?v=20260923-9"></script>
+  <script src="./app.js?v=20260924-1"></script>
   <script type="module" src="./account.mjs?v=20260923-9"></script>
+  <script src="./arrow-system.js?v=20260924-1"></script>
 </body>
 </html>
