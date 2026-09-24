@@ -944,8 +944,13 @@ function closeNodeDialog() {
   nodeDialog.close();
 }
 
-document.querySelector('#themeToggle').addEventListener('click', () => {
+document.querySelector('#themeToggle')?.addEventListener('click', () => {
   applyTheme(isDarkTheme() ? 'light' : 'dark');
+});
+
+window.addEventListener('arrow:themechange', () => {
+  syncFilterColors();
+  render();
 });
 
 document.querySelector('#addNode').addEventListener('click', openNodeDialog);
