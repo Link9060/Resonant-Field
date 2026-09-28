@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.112.4';
 
 const SUPABASE_URL = 'https://cnorozrjugxpanpfmssa.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_yVNPiB7opT0WRvBfKTZ2BA_s5bOQLRg';
-const RELAY_CONNECT_URL = 'https://resonantrelay.org/connect-field/';
+const ARROW_LOGIN_URL = 'https://enterarrow.com/?next=/atlas/';
 const PAGE_SIZE = 1000;
 const TODO_LOD_SCALE = 1.65;
 const BUILD_LAYOUT_VERSION = 2;
@@ -53,7 +53,7 @@ function sleep(ms) {
 }
 
 function connectRelay() {
-  window.location.assign(RELAY_CONNECT_URL);
+  window.location.assign(ARROW_LOGIN_URL);
 }
 
 accountButton.addEventListener('click', () => {
@@ -71,6 +71,15 @@ connectRelayInline.addEventListener('click', connectRelay);
 signOutField.addEventListener('click', async () => {
   accountMenu.hidden = true;
   accountButton.setAttribute('aria-expanded', 'false');
+
+  if (
+    window.location.hostname === 'enterarrow.com' ||
+    window.location.hostname === 'www.enterarrow.com'
+  ) {
+    window.location.assign('/signout/');
+    return;
+  }
+
   await supabase.auth.signOut({ scope: 'local' });
   restoreDemo();
 });
@@ -107,7 +116,7 @@ async function consumeRelayHandoff() {
 
   if (error || !data.session) {
     console.error('Field account handoff verification failed', error);
-    showConnectionError('That Relay connection expired. Try Connect Relay again.');
+    showConnectionError('That Relay connection expired. Try Sign in to ARROW again.');
     return false;
   }
   return true;
@@ -974,13 +983,13 @@ function restoreDemo() {
   document.body.classList.remove('field-live');
   fieldStatus.textContent = 'DEMO';
   accountButton.classList.remove('connected');
-  accountLabel.textContent = 'Connect Relay';
+  accountLabel.textContent = 'Connect ARROW';
   accountEmail.textContent = 'Not connected';
   demoBanner.hidden = false;
   syncButton.hidden = true;
   hideBuildExperience();
   nodeDialogMode.textContent = 'DEMO FIELD NODE';
-  nodeDialogFootnote.textContent = 'Demo nodes stay in this browser until you connect Relay.';
+  nodeDialogFootnote.textContent = 'Demo nodes stay in this browser until you connect ARROW.';
 }
 
 function setLiveUi(user, nodeCount, edgeCount, built, pendingNodes = 0, pendingEdges = 0) {
@@ -988,7 +997,7 @@ function setLiveUi(user, nodeCount, edgeCount, built, pendingNodes = 0, pendingE
   fieldStatus.textContent = 'LIVE';
   accountButton.classList.add('connected');
   accountLabel.textContent = shortIdentity(user.email);
-  accountEmail.textContent = user.email || 'Relay account';
+  accountEmail.textContent = user.email || 'ARROW account';
   demoBanner.hidden = true;
   syncButton.hidden = !built;
   const syncLabel = syncButton.querySelector('span:last-child');
@@ -1013,7 +1022,7 @@ function setConnectionState(label) {
       ? 'Syncing…'
       : currentUser?.email
         ? shortIdentity(currentUser.email)
-        : 'Connect Relay';
+        : 'Connect ARROW';
 }
 
 function showConnectionError(message) {
@@ -1024,7 +1033,7 @@ function showConnectionError(message) {
 }
 
 function shortIdentity(email) {
-  if (!email) return 'Relay account';
+  if (!email) return 'ARROW account';
   const local = email.split('@')[0] || email;
   return local.length > 18 ? local.slice(0, 17) + '…' : local;
 }
