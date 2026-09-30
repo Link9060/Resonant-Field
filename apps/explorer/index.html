@@ -23,7 +23,7 @@
       } catch (error) {}
     })();
   </script>
-  <link rel="stylesheet" href="./styles.css?v=20260924-3" />
+  <link rel="stylesheet" href="./styles.css?v=20260929-atlas1" />
   <link rel="stylesheet" href="https://link9060.github.io/Resonant-Orbit/arrow-shell.css?v=20260928-escape-signout-v2" />
 </head>
 <body>
@@ -33,7 +33,7 @@
         <div class="mark" aria-hidden="true">✦</div>
         <div class="brand-copy">
           <strong>Atlas</strong>
-          <span>RESONANT ASSIST · FIELD ENGINE</span>
+          <span>PROJECT ARROW · INFORMATION CENTER</span>
         </div>
       </div>
 
@@ -49,7 +49,7 @@
               <span class="section-label">ARROW ACCOUNT</span>
               <strong id="accountEmail">Not connected</strong>
             </div>
-            <a id="openRelayAccount" href="https://enterarrow.com/relay/" role="menuitem">Open Relay</a>
+            <a id="openRelayAccount" href="https://enterarrow.com/orbit/" role="menuitem">Open Orbit</a>
             <button id="signOutField" type="button" role="menuitem">Sign out of ARROW</button>
           </div>
         </div>
@@ -84,7 +84,7 @@
         <p class="section-label">SCOPE</p>
         <div class="segmented" role="group" aria-label="Graph view">
           <button class="view-button active" data-view="all">All</button>
-          <button class="view-button" data-view="projects">Hubs</button>
+          <button class="view-button" data-view="projects">Projects</button>
           <button class="view-button" data-view="recent">Recent</button>
         </div>
       </div>
@@ -102,10 +102,10 @@
           <span class="ravin-orb">✦</span>
           <div>
             <p class="section-label">RAVIN</p>
-            <strong>Ask Atlas</strong>
+            <strong>Ask RAVIN</strong>
           </div>
         </div>
-        <p>Retrieve useful context from the knowledge currently in view.</p>
+        <p>Pull the most useful context from the knowledge currently in view.</p>
         <button class="prompt-chip" data-prompt="What am I working on?">What am I working on?</button>
         <button class="prompt-chip" data-prompt="What is due soon?">What is due soon?</button>
         <button class="prompt-chip" data-prompt="What changed recently?">What changed recently?</button>
@@ -145,7 +145,7 @@
 
       <div class="graph-footer">
         <span>Click inspect · Double-click focus · F fit · ⌘K search</span>
-        <span>ATLAS · FIELD ENGINE</span>
+        <span>ATLAS · INFORMATION CENTER</span>
       </div>
 
       <aside id="inspector" class="inspector">
@@ -181,6 +181,7 @@
             <option value="project">Project</option>
             <option value="todo">Todo</option>
             <option value="file">File reference</option>
+            <option value="link">Link</option>
             <option value="memory">Memory</option>
           </select>
         </label>
@@ -195,6 +196,11 @@
         <textarea id="nodeSummary" name="summary" maxlength="500" rows="5" placeholder="What should Atlas or RAVIN know about this?"></textarea>
       </label>
 
+      <label>
+        <span>URL <small>(optional)</small></span>
+        <input id="nodeUrl" name="url" type="url" inputmode="url" autocomplete="url" placeholder="https://example.com" />
+      </label>
+
       <label class="checkbox-row">
         <input id="nodeRavin" type="checkbox" checked />
         <span>Allow this node in the RAVIN context demo</span>
@@ -204,12 +210,12 @@
         <button type="button" id="cancelDialog" class="secondary-action">Cancel</button>
         <button type="submit" class="primary-action">Add node</button>
       </div>
-      <p id="nodeDialogFootnote" class="dialog-footnote">Demo nodes stay in this browser until you connect Relay.</p>
+      <p id="nodeDialogFootnote" class="dialog-footnote">Demo nodes stay in this browser until you connect ARROW.</p>
     </form>
   </dialog>
 
-  <script src="./app.js?v=20260924-1"></script>
-  <script type="module" src="./account.mjs?v=20260923-9"></script>
+  <script src="./app.js?v=20260929-atlas1"></script>
+  <script type="module" src="./account.mjs?v=20260929-atlas1"></script>
   <script defer src="https://link9060.github.io/Resonant-Orbit/arrow-shell.js?v=20260928-escape-signout-v2"></script>
 </body>
 </html>
