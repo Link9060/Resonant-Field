@@ -99,7 +99,7 @@ document.addEventListener('click', event => {
   accountButton.setAttribute('aria-expanded', 'false');
 });
 
-async function consumeRelayHandoff() {
+async function consumeArrowHandoff() {
   if (!window.location.hash) return false;
   const params = new URLSearchParams(window.location.hash.slice(1));
   const tokenHash = params.get('token_hash');
@@ -116,7 +116,7 @@ async function consumeRelayHandoff() {
 
   if (error || !data.session) {
     console.error('Field account handoff verification failed', error);
-    showConnectionError('That Relay connection expired. Try Sign in to ARROW again.');
+    showConnectionError('That ARROW sign-in link expired. Try signing in again.');
     return false;
   }
   return true;
@@ -209,7 +209,7 @@ async function loadLiveAccount(user, options = {}) {
     return { ...prepared, userState };
   } catch (error) {
     console.error('Field live account load failed', error);
-    showConnectionError('Field connected your account, but could not load the graph.');
+    showConnectionError('Atlas connected your account, but could not load the graph.');
     return null;
   } finally {
     loadingAccount = false;
@@ -265,6 +265,7 @@ async function prepareDataset(
       sourceProduct: row.source_product,
       sourceType: row.source_type,
       rawMetadata: row.metadata || {},
+      url: typeof row.metadata?.url === 'string' ? row.metadata.url : '',
     };
 
     applyContent(node, content, file);
@@ -712,7 +713,9 @@ function resetExplorerForDataset({ preserve = false } = {}) {
   Field.syncFilterColors();
   Field.updateStats();
   if (Field.state.selected) Field.selectNode(Field.state.selected); else Field.selectNode(null);
-  if (!preserve) Field.fitGraph(); else Field.render();
+  if (!Field.applyRouteState?.({ fit: !preserve })) {
+    if (!preserve) Field.fitGraph(); else Field.render();
+  }
 }
 
 function showBuildExperience(dataset) {
@@ -757,7 +760,7 @@ async function buildMyField() {
     buildOverlay.classList.remove('building', 'releasing');
     buildButton.disabled = false;
     fieldStatus.textContent = 'ERROR';
-    showSyncFlash('Could not save Field build state');
+    showSyncFlash('Could not save Atlas build state');
     return;
   }
 
@@ -767,7 +770,7 @@ async function buildMyField() {
   hideBuildExperience();
   syncButton.hidden = false;
   fieldStatus.textContent = 'LIVE';
-  showSyncFlash('Field built');
+  showSyncFlash('Atlas built');
 }
 
 function createBuildPlan(nodes, edges) {
@@ -862,7 +865,7 @@ async function syncFieldNow(options = {}) {
       showSyncFlash(`${newNodeIds.size} new ${newNodeIds.size === 1 ? 'node' : 'nodes'} · ${newEdgeIds.size} new ${newEdgeIds.size === 1 ? 'link' : 'links'}`);
     } else {
       resetExplorerForDataset({ preserve: true });
-      showSyncFlash('Field is up to date');
+      showSyncFlash('Atlas is up to date');
     }
 
     const syncedAt = new Date().toISOString();
@@ -883,7 +886,7 @@ async function syncFieldNow(options = {}) {
       setTimeout(() => Field.selectNode(options.selectNodeId), 500);
     }
   } catch (error) {
-    console.error('Field sync failed', error);
+    console.error('Atlas sync failed', error);
     showSyncFlash('Sync failed');
   } finally {
     syncing = false;
@@ -988,7 +991,7 @@ function restoreDemo() {
   demoBanner.hidden = false;
   syncButton.hidden = true;
   hideBuildExperience();
-  nodeDialogMode.textContent = 'DEMO FIELD NODE';
+  nodeDialogMode.textContent = 'DEMO ATLAS NODE';
   nodeDialogFootnote.textContent = 'Demo nodes stay in this browser until you connect ARROW.';
 }
 
@@ -1008,9 +1011,9 @@ function setLiveUi(user, nodeCount, edgeCount, built, pendingNodes = 0, pendingE
   }
   syncButton.title = pendingNodes || pendingEdges
     ? `${pendingNodes} new nodes · ${pendingEdges} new relationships`
-    : 'Sync Field';
-  nodeDialogMode.textContent = 'LIVE FIELD NODE';
-  nodeDialogFootnote.textContent = 'This node will be stored in your private Field account.';
+    : 'Sync Atlas';
+  nodeDialogMode.textContent = 'LIVE ATLAS NODE';
+  nodeDialogFootnote.textContent = 'This node will be stored in your private Atlas data.';
   document.querySelector('#viewTitle').textContent = `${nodeCount} nodes · ${edgeCount} relationships`;
 }
 
@@ -1058,7 +1061,8 @@ async function createLiveNode(event) {
 
   const type = document.querySelector('#nodeType').value;
   const cluster = document.querySelector('#nodeCluster').value.trim();
-  const summary = document.querySelector('#nodeSummary').value.trim() || 'User-created Field node.';
+  const summary = document.querySelector('#nodeSummary').value.trim() || 'User-created Atlas node.';
+  const url = document.querySelector('#nodeUrl')?.value.trim() || '';
   const sourceId = crypto.randomUUID();
 
   const { data: node, error } = await supabase
@@ -1071,14 +1075,14 @@ async function createLiveNode(event) {
       source_product: 'field',
       source_id: sourceId,
       source_type: 'manual',
-      metadata: cluster ? { cluster } : {},
+      metadata: { ...(cluster ? { cluster } : {}), ...(url ? { url } : {}) },
     })
     .select('id')
     .single();
 
   if (error || !node) {
-    console.error('Live Field node creation failed', error);
-    alert('Field could not save that node.');
+    console.error('Live Atlas node creation failed', error);
+    alert('Atlas could not save that node.');
     return;
   }
 
@@ -1097,7 +1101,7 @@ async function createLiveNode(event) {
     structured_content: structuredContent,
   });
 
-  if (contentError) console.warn('Field node content could not be saved', contentError);
+  if (contentError) console.warn('Atlas node content could not be saved', contentError);
 
   await supabase.from('field_source_preferences').upsert({
     user_id: currentUser.id,
@@ -1126,7 +1130,7 @@ supabase.auth.onAuthStateChange((event, session) => {
 });
 
 void (async function initializeAccount() {
-  await consumeRelayHandoff();
+  await consumeArrowHandoff();
   const { data: { session } } = await supabase.auth.getSession();
   if (session?.user) {
     await loadLiveAccount(session.user);
