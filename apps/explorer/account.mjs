@@ -248,9 +248,12 @@ async function prepareDataset(
     const content = contentByNode.get(row.id);
     const file = fileByNode.get(row.id);
     const preference = preferenceBySource.get(`${row.source_product}:${row.source_type}`);
+    const displayType = row.type === 'other' && row.metadata?.kind === 'person'
+      ? 'person'
+      : (Field.labels[row.type] ? row.type : 'other');
     const node = {
       id: row.id,
-      type: Field.labels[row.type] ? row.type : 'other',
+      type: displayType,
       title: row.title || 'Untitled',
       summary: summarize(row.searchable_text) || defaultSummary(row),
       cluster: collectionName(row) || sourceName(row),
@@ -583,6 +586,7 @@ function typeCenter(type) {
   if (type === 'file') return { x: -250, y: 190 };
   if (type === 'calendar_event') return { x: 275, y: 190 };
   if (type === 'ravin_conversation' || type === 'memory') return { x: 0, y: -245 };
+  if (type === 'person') return { x: 0, y: 255 };
   return { x: 0, y: 240 };
 }
 
@@ -656,6 +660,7 @@ function sourceName(row) {
     return 'Relay';
   }
   if (row.source_product === 'field-system') return 'Field';
+  if (row.source_product === 'field' && row.source_type === 'manual') return 'Atlas';
   if (row.source_product === 'ravin') return 'RAVIN';
   return row.source_product || 'Field';
 }
@@ -1060,6 +1065,7 @@ async function createLiveNode(event) {
   if (!title) return;
 
   const type = document.querySelector('#nodeType').value;
+  const storageType = type === 'person' ? 'other' : type;
   const cluster = document.querySelector('#nodeCluster').value.trim();
   const summary = document.querySelector('#nodeSummary').value.trim() || 'User-created Atlas node.';
   const url = document.querySelector('#nodeUrl')?.value.trim() || '';
@@ -1069,13 +1075,13 @@ async function createLiveNode(event) {
     .from('field_nodes')
     .insert({
       user_id: currentUser.id,
-      type,
+      type: storageType,
       title: title.slice(0, 240),
       searchable_text: `${title}\n${summary}`,
       source_product: 'field',
       source_id: sourceId,
       source_type: 'manual',
-      metadata: { ...(cluster ? { cluster } : {}), ...(url ? { url } : {}) },
+      metadata: { ...(cluster ? { cluster } : {}), ...(url ? { url } : {}), ...(type === 'person' ? { kind: 'person' } : {}) },
     })
     .select('id')
     .single();
