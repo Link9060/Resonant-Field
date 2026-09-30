@@ -820,7 +820,9 @@ function selectNode(id) {
   const previous = state.selected;
   state.selected = id;
   const inspector = document.querySelector('#inspector');
+
   if (!id) {
+    state.expandedGroups.clear();
     inspector.classList.remove('open');
     inspector.innerHTML = `<div class="empty-state"><div class="empty-icon">✦</div><h2>Select a node</h2><p>Click anything in Atlas to inspect its source, relationships, and AI-access status.</p></div>`;
     if (previous) fitGraph(); else render();
@@ -828,22 +830,29 @@ function selectNode(id) {
   }
 
   const node = getNode(id);
-  const externalUrl = safeExternalUrl(node?.url || node?.rawMetadata?.url);
+  if (!node) return;
 
-  if (node?.virtual) {
+  const keepExpandedParent = Boolean(node.parentId && state.expandedGroups.has(node.parentId));
+  if (!state.expandedGroups.has(id) && !keepExpandedParent) state.expandedGroups.clear();
+
+  const visibilityContext = buildVisibilityContext();
+  const contents = directChildren(id, visibilityContext)
+    .sort((a, b) =>
+      Number(b.recent || 0) - Number(a.recent || 0)
+      || String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''))
+      || String(a.title || '').localeCompare(String(b.title || ''))
+    );
+  const largeGroup = contents.length > LARGE_GROUP_THRESHOLD;
+  const mapExpanded = state.expandedGroups.has(id);
+  const externalUrl = safeExternalUrl(node.url || node.rawMetadata?.url);
+
+  if (node.virtual && !largeGroup) {
     const childEdges = edges.filter(edge => edge.type === 'contains' && edge.a === id);
     const childNodes = {};
     const childEdgePlan = {};
     childEdges.forEach((edge, index) => {
-      childNodes[edge.b] = {
-        delay: 45 + index * 32,
-        duration: 430,
-        fromId: id,
-      };
-      childEdgePlan[edge.id] = {
-        delay: Math.max(20, index * 32),
-        duration: 340,
-      };
+      childNodes[edge.b] = { delay: 45 + index * 32, duration: 430, fromId: id };
+      childEdgePlan[edge.id] = { delay: Math.max(20, index * 32), duration: 340 };
     });
     if (childEdges.length) {
       startRevealAnimation({
@@ -852,16 +861,21 @@ function selectNode(id) {
         nodes: childNodes,
         edges: childEdgePlan,
       });
-      fitGraph();
     }
   }
 
   const relatedEdges = edges.filter(e => e.a === id || e.b === id).sort((a,b)=>b.strength-a.strength);
-  const related = relatedEdges.map(e => ({ edge:e, node:getNode(e.a === id ? e.b : e.a) })).filter(x => x.node);
+  const relationshipEdges = relatedEdges.filter(edge => !(edge.type === 'contains' && edge.a === id));
+  const related = relationshipEdges
+    .map(e => ({ edge:e, node:getNode(e.a === id ? e.b : e.a) }))
+    .filter(x => x.node)
+    .slice(0, 24);
+  const contentPreview = contents.slice(0, INSPECTOR_CONTENT_LIMIT);
+
   inspector.classList.add('open');
   inspector.innerHTML = `
     <div class="inspector-head">
-      <div class="node-type"><i class="dot" style="color:${palette()[node.type]};background:${palette()[node.type]}"></i>${labels[node.type]}</div>
+      <div class="node-type"><i class="dot" style="color:${palette()[node.type]};background:${palette()[node.type]}"></i>${labels[node.type] || node.type}</div>
       <button class="inspector-close" type="button" aria-label="Close inspector" title="Close">×</button>
     </div>
     <h2 class="node-title">${escapeHtml(node.title)}</h2>
@@ -872,6 +886,20 @@ function selectNode(id) {
       <p class="section-label">CONTENT PREVIEW</p>
       ${renderNodePreview(node)}
     </div>
+
+    ${contents.length ? `
+      <div class="inspector-section">
+        <div class="inspector-section-head">
+          <p class="section-label">CONTENTS · ${contents.length}</p>
+          ${largeGroup ? `<span class="section-note">${mapExpanded ? `showing ${Math.min(GROUP_PREVIEW_LIMIT, contents.length)} on map` : 'collapsed on map'}</span>` : ''}
+        </div>
+        <div class="related-list compact-content-list">
+          ${contentPreview.map(child => `<button class="related-item" data-node="${child.id}"><strong>${escapeHtml(child.title)}</strong><span>${escapeHtml(labels[child.type] || child.type)} · ${escapeHtml(child.source || 'Atlas')}</span></button>`).join('')}
+        </div>
+        ${contents.length > INSPECTOR_CONTENT_LIMIT ? `<p class="content-overflow-note">+${contents.length - INSPECTOR_CONTENT_LIMIT} more items. Use search to jump directly to one.</p>` : ''}
+        ${largeGroup ? `<button class="group-map-toggle" type="button" data-toggle-group="${node.id}">${mapExpanded ? 'Hide map preview' : `Show ${Math.min(GROUP_PREVIEW_LIMIT, contents.length)} on map`}</button>` : ''}
+      </div>
+    ` : ''}
 
     <div class="inspector-section">
       <p class="section-label">METADATA</p>
@@ -891,17 +919,30 @@ function selectNode(id) {
 
     ${node.custom ? `<div class="inspector-section"><p class="section-label">PROTOTYPE DATA</p><button class="delete-node" data-delete-node="${node.id}">Remove this local node</button></div>` : ''}
 
-    <div class="inspector-section">
-      <p class="section-label">RELATIONSHIPS · ${related.length}</p>
-      <div class="related-list">
-        ${related.map(({edge,node:r}) => `<button class="related-item" data-node="${r.id}"><strong>${escapeHtml(r.title)}</strong><span>${escapeHtml(edge.type)} · ${Math.round(edge.strength*100)}%</span></button>`).join('')}
+    ${relationshipEdges.length ? `
+      <div class="inspector-section">
+        <p class="section-label">RELATIONSHIPS · ${relationshipEdges.length}</p>
+        <div class="related-list">
+          ${related.map(({edge,node:r}) => `<button class="related-item" data-node="${r.id}"><strong>${escapeHtml(r.title)}</strong><span>${escapeHtml(edge.type)} · ${Math.round(edge.strength*100)}%</span></button>`).join('')}
+        </div>
+        ${relationshipEdges.length > related.length ? `<p class="content-overflow-note">+${relationshipEdges.length - related.length} more relationships hidden for clarity.</p>` : ''}
       </div>
-    </div>
+    ` : ''}
   `;
 
   if (!previous) fitGraph();
   inspector.querySelector('.inspector-close')?.addEventListener('click', () => selectNode(null));
   inspector.querySelectorAll('[data-node]').forEach(btn => btn.addEventListener('click', () => selectNode(btn.dataset.node)));
+  inspector.querySelector('[data-toggle-group]')?.addEventListener('click', () => {
+    if (state.expandedGroups.has(id)) {
+      state.expandedGroups.delete(id);
+    } else {
+      state.expandedGroups.clear();
+      state.expandedGroups.add(id);
+    }
+    selectNode(id);
+    fitGraph();
+  });
   inspector.querySelectorAll('[data-delete-node]').forEach(btn => btn.addEventListener('click', () => {
     const idToDelete = btn.dataset.deleteNode;
     const index = nodes.findIndex(item => item.id === idToDelete && item.custom);
