@@ -584,9 +584,10 @@ function drawBackdrop() {
 
 const previewImageCache = new Map();
 
-function drawNode(node, inFocus = true, visual = node) {
+function drawNode(node, inFocus = true, visual = node, showLabel = false, visibilityContext = null) {
   const p = worldToScreen(visual);
-  const r = nodeRadius(node) * Math.max(.8, Math.min(1.25,state.scale)) * (visual.scaleFactor ?? 1);
+  const r = nodeRadius(node) * Math.max(.8, Math.min(1.18,state.scale)) * (visual.scaleFactor ?? 1);
+  const childCount = visibilityContext?.childrenByParent.get(node.id)?.length || 0;
   const selected = state.selected === node.id;
   const hovered = state.hovered === node.id;
   const project = (node.type === 'project' || node.type === 'collection');
@@ -595,11 +596,11 @@ function drawNode(node, inFocus = true, visual = node) {
   const focusAlpha = selected ? 1 : !inFocus ? .16 : project ? .96 : hovered ? 1 : .86;
   const alpha = focusAlpha * (visual.alpha ?? 1);
 
-  if (node.recent >= 9 || selected) {
+  if (selected || hovered || (state.scale > 1.35 && node.recent >= 9)) {
     ctx.beginPath();
-    ctx.arc(p.x, p.y, r + (selected ? 13 : 8), 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, r + (selected ? 9 : 6), 0, Math.PI * 2);
     ctx.fillStyle = nodeColor;
-    ctx.globalAlpha = alpha * (selected ? .075 : .035);
+    ctx.globalAlpha = alpha * (selected ? .065 : .026);
     ctx.fill();
     ctx.globalAlpha = 1;
   }
@@ -609,23 +610,23 @@ function drawNode(node, inFocus = true, visual = node) {
   drawNodeCore(node, p, r + (hovered ? 1.2 : 0), selected ? colors.selectedNode : nodeColor);
 
   ctx.beginPath();
-  ctx.arc(p.x,p.y,r + (selected ? 4 : hovered ? 3.8 : 3),0,Math.PI*2);
+  ctx.arc(p.x,p.y,r + (selected ? 3.4 : hovered ? 3 : 2.2),0,Math.PI*2);
   ctx.strokeStyle = selected ? colors.ringSelected : colors.ring;
-  ctx.lineWidth = selected ? 1.15 : .85;
+  ctx.lineWidth = selected ? 1.05 : .7;
   ctx.stroke();
 
-  if (node.type === 'todo') {
+  if (node.type === 'todo' && (selected || hovered || state.scale > 1.25)) {
     ctx.beginPath();
     ctx.arc(
       p.x,
       p.y,
-      r + 6,
+      r + 4.2,
       -Math.PI / 2,
       node.completed ? Math.PI * 1.5 : Math.PI * .86
     );
     ctx.strokeStyle = nodeColor;
-    ctx.globalAlpha = node.completed ? .34 : .62;
-    ctx.lineWidth = 1.1;
+    ctx.globalAlpha = node.completed ? .26 : .5;
+    ctx.lineWidth = .8;
     ctx.stroke();
     ctx.globalAlpha = alpha;
   }
@@ -641,18 +642,22 @@ function drawNode(node, inFocus = true, visual = node) {
     }
   }
 
-  if (node.ai) {
+  if (node.ai && (selected || hovered || state.scale > 1.35)) {
     const orbitAngle = stableAngle(node.id);
-    const ox = p.x + Math.cos(orbitAngle) * (r + 8);
-    const oy = p.y + Math.sin(orbitAngle) * (r + 8);
+    const ox = p.x + Math.cos(orbitAngle) * (r + 6.2);
+    const oy = p.y + Math.sin(orbitAngle) * (r + 6.2);
     ctx.beginPath();
-    ctx.arc(ox, oy, 1.45, 0, Math.PI * 2);
+    ctx.arc(ox, oy, 1.1, 0, Math.PI * 2);
     ctx.fillStyle = palette().ravin_conversation;
-    ctx.globalAlpha = .72 * alpha;
+    ctx.globalAlpha = .58 * alpha;
     ctx.fill();
   }
 
   ctx.restore();
+
+  if (childCount > LARGE_GROUP_THRESHOLD) {
+    drawGroupCountBadge(p, r, childCount, state.expandedGroups.has(node.id), alpha);
+  }
 
   const shouldPreview =
     state.scale > 1.92 &&
@@ -661,13 +666,6 @@ function drawNode(node, inFocus = true, visual = node) {
     drawClosePreview(node, p, alpha);
     return;
   }
-
-  const showLabel =
-    selected ||
-    hovered ||
-    project ||
-    (state.selected && inFocus) ||
-    (state.scale > 1.08 && node.recent >= 8);
 
   if (showLabel && inFocus) {
     const label = truncateCanvasLabel(node.title, project ? 28 : 24);
@@ -692,6 +690,28 @@ function drawNode(node, inFocus = true, visual = node) {
     ctx.fillText(label, labelX, labelY);
     ctx.globalAlpha = 1;
   }
+}
+
+function drawGroupCountBadge(p, r, count, expanded, alpha) {
+  const text = count > 999 ? '999+' : String(count);
+  const dark = isDarkTheme();
+  const badgeX = p.x + r + 7;
+  const badgeY = p.y - r - 6;
+  const badgeWidth = Math.max(18, 9 + text.length * 5.2);
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, alpha * (expanded ? .94 : .78));
+  roundedRect(ctx, badgeX - badgeWidth / 2, badgeY - 7, badgeWidth, 14, 7);
+  ctx.fillStyle = dark ? 'rgba(16,16,18,.94)' : 'rgba(250,250,251,.96)';
+  ctx.fill();
+  ctx.strokeStyle = dark ? 'rgba(255,255,255,.13)' : 'rgba(0,0,0,.12)';
+  ctx.lineWidth = .7;
+  ctx.stroke();
+  ctx.fillStyle = dark ? '#d4d4d8' : '#35353a';
+  ctx.font = '700 7px Inter, system-ui';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, badgeX, badgeY + .5);
+  ctx.restore();
 }
 
 function drawNodeCore(node, p, r, fillStyle) {
