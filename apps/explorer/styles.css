@@ -453,6 +453,21 @@ kbd {
   font-weight: 560;
 }
 .node-summary { margin: 0; color: var(--ink-muted); font-size: 10.5px; line-height: 1.6; }
+.node-source-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 11px;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-muted);
+  text-decoration: none;
+  font-size: 9px;
+  font-weight: 560;
+}
+.node-source-link:hover { background: var(--hover); color: var(--ink); }
 .inspector-section { margin-top: 22px; padding-top: 17px; border-top: 1px solid var(--border); }
 .meta-grid { display: block; margin-top: 9px; }
 .meta-card {
@@ -530,6 +545,32 @@ kbd {
 .extracted-preview { margin: 8px 0 0; color: var(--ink-muted); font-size: 9px; line-height: 1.55; }
 .calendar-preview strong { display: block; font-size: 10px; color: var(--ink-muted); }
 .text-preview { color: var(--ink-muted); font-size: 10px; line-height: 1.65; }
+.link-preview {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.link-preview > span {
+  flex: 0 0 auto;
+  padding: 5px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--ink-faint);
+  font-size: 7px;
+  font-weight: 750;
+  letter-spacing: .08em;
+}
+.link-preview strong, .link-preview small { display: block; }
+.link-preview strong { font-size: 10px; }
+.link-preview small {
+  max-width: 240px;
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--ink-faint);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .delete-node {
   width: 100%;
   margin-top: 8px;
