@@ -706,6 +706,7 @@ function resetExplorerForDataset({ preserve = false } = {}) {
   Field.state.query = query;
   Field.state.view = view;
   Field.state.filters = new Set(Object.keys(Field.labels));
+  Field.state.expandedGroups?.clear();
 
   document.querySelector('#searchInput').value = query;
   document.querySelector('#filters').innerHTML = '';
