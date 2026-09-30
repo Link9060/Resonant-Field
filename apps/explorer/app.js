@@ -263,7 +263,7 @@ function isVisible(node) {
   ) return false;
   if (state.query) {
     const q = state.query.toLowerCase();
-    const hay = `${node.title} ${node.summary} ${node.cluster} ${node.type} ${node.contentText ?? ''} ${node.extractedPreview ?? ''} ${(node.contentBlocks ?? []).map(block => block.text ?? '').join(' ')}`.toLowerCase();
+    const hay = `${node.title} ${node.summary} ${node.cluster} ${node.type} ${node.url ?? node.rawMetadata?.url ?? ''} ${node.contentText ?? ''} ${node.extractedPreview ?? ''} ${(node.contentBlocks ?? []).map(block => block.text ?? '').join(' ')}`.toLowerCase();
     if (!hay.includes(q)) return false;
   }
   return true;
@@ -685,6 +685,7 @@ function selectNode(id) {
   }
 
   const node = getNode(id);
+  const externalUrl = safeExternalUrl(node?.url || node?.rawMetadata?.url);
 
   if (node?.virtual) {
     const childEdges = edges.filter(edge => edge.type === 'contains' && edge.a === id);
@@ -722,6 +723,7 @@ function selectNode(id) {
     </div>
     <h2 class="node-title">${escapeHtml(node.title)}</h2>
     <p class="node-summary">${escapeHtml(node.summary)}</p>
+    ${externalUrl ? `<a class="node-source-link" href="${escapeHtml(externalUrl)}" target="_blank" rel="noopener noreferrer">Open source <span aria-hidden="true">↗</span></a>` : ''}
 
     <div class="inspector-section">
       <p class="section-label">CONTENT PREVIEW</p>
@@ -798,6 +800,11 @@ function renderNodePreview(node) {
     return `<div class="content-preview calendar-preview"><strong>${escapeHtml(node.eventDate || '')}${node.eventTime ? ' · ' + escapeHtml(node.eventTime) : ''}</strong><p>${escapeHtml(node.eventDetails || node.summary)}</p></div>`;
   }
 
+  if (node.type === 'link' && safeExternalUrl(node.url || node.rawMetadata?.url)) {
+    const url = safeExternalUrl(node.url || node.rawMetadata?.url);
+    return `<div class="content-preview link-preview"><span>LINK</span><div><strong>${escapeHtml(node.title)}</strong><small>${escapeHtml(url)}</small></div></div>`;
+  }
+
   if (node.contentKind === 'file') {
     return `<div class="content-preview file-preview"><div class="file-icon">FILE</div><div><strong>${escapeHtml(node.fileName || node.title)}</strong><span>${escapeHtml(node.mimeType || 'File')}${node.fileSize ? ' · ' + escapeHtml(node.fileSize) : ''}</span></div></div>${node.extractedPreview ? `<p class="extracted-preview">${escapeHtml(node.extractedPreview)}</p>` : ''}`;
   }
@@ -807,7 +814,17 @@ function renderNodePreview(node) {
 }
 
 function escapeHtml(value) {
-  return value.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function safeExternalUrl(value) {
+  if (!value) return '';
+  try {
+    const url = new URL(String(value).trim());
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : '';
+  } catch {
+    return '';
+  }
 }
 
 function syncFilterColors() {
@@ -924,7 +941,7 @@ function runRavin(prompt) {
   const contextEdges = edges.filter(e=>seedIds.has(e.a)||seedIds.has(e.b)).slice(0,6);
 
   result.hidden = false;
-  result.innerHTML = `<strong>Retrieved ${ranked.length} nodes</strong><br>${ranked.map(x=>escapeHtml(x.node.title)).join(' · ')}<br><br><span style="color:var(--ink-faint)">${contextEdges.length} related edges would also be passed to RAVIN.</span>`;
+  result.innerHTML = `<strong>Context preview · ${ranked.length} nodes</strong><br>${ranked.map(x=>escapeHtml(x.node.title)).join(' · ')}<br><br><span style="color:var(--ink-faint)">${contextEdges.length} related relationships are included in the Atlas context bundle.</span>`;
 
   state.query = '';
   document.querySelector('#searchInput').value = '';
@@ -977,6 +994,7 @@ nodeForm.addEventListener('submit', event => {
   const clusterInput = document.querySelector('#nodeCluster').value.trim();
   const cluster = clusterInput || (type === 'project' ? title : 'Personal');
   const summary = document.querySelector('#nodeSummary').value.trim() || 'User-created Atlas node.';
+  const externalUrl = safeExternalUrl(document.querySelector('#nodeUrl')?.value.trim());
   const position = customNodePosition(cluster);
 
   const node = {
@@ -984,8 +1002,10 @@ nodeForm.addEventListener('submit', event => {
     type,
     title,
     summary,
-    contentKind: 'text',
+    contentKind: type === 'link' ? 'link' : 'text',
     contentText: summary,
+    url: externalUrl,
+    rawMetadata: externalUrl ? { url: externalUrl } : {},
     cluster,
     source: 'Atlas',
     ai: document.querySelector('#nodeRavin').checked,
@@ -1151,6 +1171,32 @@ systemTheme.addEventListener?.('change', event => {
   if (!explicit) applyTheme(event.matches ? 'dark' : 'light', false);
 });
 
+function applyRouteState({ fit = true } = {}) {
+  const params = new URLSearchParams(window.location.search);
+  const query = (params.get('q') || '').trim();
+  const nodeId = (params.get('node') || '').trim();
+  let handled = false;
+
+  if (query) {
+    state.query = query;
+    document.querySelector('#searchInput').value = query;
+    handled = true;
+  }
+
+  if (nodeId && getNode(nodeId)) {
+    selectNode(nodeId);
+    handled = true;
+  }
+
+  if (handled) {
+    updateStats();
+    if (fit && !state.selected) fitGraph();
+    else render();
+  }
+
+  return handled;
+}
+
 window.Atlas = window.FieldExplorer = {
   nodes,
   edges,
@@ -1175,6 +1221,7 @@ window.Atlas = window.FieldExplorer = {
   nodeForm,
   startRevealAnimation,
   stopRevealAnimation,
+  applyRouteState,
 };
 
 setupFilters();
@@ -1185,3 +1232,4 @@ updateStats();
 updateZoom();
 new ResizeObserver(resize).observe(canvas);
 resize();
+applyRouteState();
