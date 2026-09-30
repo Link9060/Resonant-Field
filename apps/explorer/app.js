@@ -1110,35 +1110,28 @@ function updateZoom() {
 }
 
 function runRavin(prompt) {
+  const cleanPrompt = String(prompt || '').trim();
+  if (!cleanPrompt) return;
+
+  const selected = state.selected ? nodes.find(node => node.id === state.selected) : null;
+  const query = String(state.query || '').trim();
+  const contextParts = [];
+  if (selected?.title) contextParts.push(`I am currently viewing the Atlas node "${selected.title}".`);
+  if (query) contextParts.push(`My current Atlas search is "${query}".`);
+  contextParts.push(cleanPrompt);
+
+  const url = new URL('https://enterarrow.com/ravin/');
+  url.searchParams.set('from', 'atlas');
+  url.searchParams.set('surface', 'atlas');
+  url.searchParams.set('prompt', contextParts.join(' '));
+
   const result = document.querySelector('#ravinResult');
-  const tokens = prompt.toLowerCase().split(/\W+/).filter(w=>w.length>3);
-  const ranked = nodes.map(node => {
-    const text = `${node.title} ${node.summary} ${node.cluster} ${node.contentText ?? ''} ${node.extractedPreview ?? ''} ${(node.contentBlocks ?? []).map(block => block.text ?? '').join(' ')}`.toLowerCase();
-    let score = tokens.reduce((sum,t)=>sum+(text.includes(t)?2:0),0);
-    const lowerPrompt = prompt.toLowerCase();
-    if (/due|soon|coming|todo|task/.test(lowerPrompt) && (node.type === 'todo' || node.type === 'calendar_event')) score += 3;
-    if (/recent|changed|latest/.test(lowerPrompt)) score += node.recent * .22;
-    if (/work|working|project|focus/.test(lowerPrompt) && (node.type === 'project' || node.type === 'collection')) score += 2.5;
-    score += node.recent * .05;
-    return {node,score};
-  }).filter(x=>x.score>1).sort((a,b)=>b.score-a.score).slice(0,5);
+  if (result) {
+    result.hidden = false;
+    result.innerHTML = '<strong>Opening RAVIN…</strong><br><span style="color:var(--ink-faint)">Atlas context will follow you into the intelligence center.</span>';
+  }
 
-  const seedIds = new Set(ranked.map(x=>x.node.id));
-  const contextEdges = edges.filter(e=>seedIds.has(e.a)||seedIds.has(e.b)).slice(0,6);
-
-  result.hidden = false;
-  result.innerHTML = `<strong>Context preview · ${ranked.length} nodes</strong><br>${ranked.map(x=>escapeHtml(x.node.title)).join(' · ')}<br><br><span style="color:var(--ink-faint)">${contextEdges.length} related relationships are included in the Atlas context bundle.</span>`;
-
-  state.query = '';
-  state.expandedGroups.clear();
-  document.querySelector('#searchInput').value = '';
-  state.filters = new Set(Object.keys(labels));
-  document.querySelectorAll('.filter').forEach(b=>b.classList.add('active'));
-  state.view = 'all';
-  document.querySelectorAll('.view-button').forEach(b=>b.classList.toggle('active',b.dataset.view==='all'));
-  if (ranked[0]) selectNode(ranked[0].node.id);
-  updateStats();
-  render();
+  window.location.assign(url.toString());
 }
 
 const nodeDialog = document.querySelector('#nodeDialog');
@@ -1261,7 +1254,16 @@ document.querySelectorAll('.view-button').forEach(button => {
   });
 });
 
-document.querySelectorAll('.prompt-chip').forEach(button => button.addEventListener('click', () => runRavin(button.dataset.prompt)));
+document.querySelectorAll('.prompt-chip').forEach(button => button.addEventListener('click', () => {
+  const base = ['enterarrow.com','www.enterarrow.com'].includes(location.hostname)
+    ? '/ravin/'
+    : 'https://link9060.github.io/Project-R.A.V.I.N.-1.1/';
+  const url = new URL(base, location.href);
+  url.searchParams.set('from', 'atlas');
+  url.searchParams.set('surface', 'atlas');
+  url.searchParams.set('prompt', button.dataset.prompt || '');
+  location.assign(url.toString());
+}));
 
 document.querySelector('#centerGraph').addEventListener('click', centerGraph);
 document.querySelector('#zoomIn').addEventListener('click', () => { state.scale=Math.min(2.2,state.scale*1.15); updateZoom(); render(); });
