@@ -469,6 +469,42 @@ kbd {
 }
 .node-source-link:hover { background: var(--hover); color: var(--ink); }
 .inspector-section { margin-top: 22px; padding-top: 17px; border-top: 1px solid var(--border); }
+.inspector-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.section-note {
+  color: var(--ink-faint);
+  font-size: 7.5px;
+}
+.compact-content-list {
+  max-height: 286px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.content-overflow-note {
+  margin: 8px 0 0;
+  color: var(--ink-faint);
+  font-size: 8px;
+  line-height: 1.45;
+}
+.group-map-toggle {
+  width: 100%;
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  padding: 8px 10px;
+  color: var(--ink-muted);
+  font-size: 9px;
+  font-weight: 600;
+}
+.group-map-toggle:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
 .meta-grid { display: block; margin-top: 9px; }
 .meta-card {
   display: flex;
