@@ -80,6 +80,10 @@ const labels = {
   other: 'Other'
 };
 
+const LARGE_GROUP_THRESHOLD = 18;
+const GROUP_PREVIEW_LIMIT = 12;
+const INSPECTOR_CONTENT_LIMIT = 12;
+
 const demoScreenshot = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="600" viewBox="0 0 960 600">
   <rect width="960" height="600" fill="#07070a"/>
@@ -185,6 +189,7 @@ const state = {
   offsetY: 0,
   dragging: false,
   dragStart: null,
+  expandedGroups: new Set(),
   animation: null,
   animationFrame: 0
 };
@@ -253,26 +258,79 @@ function attachCustomNode(node) {
 
 for (const node of nodes.filter(node => node.custom)) attachCustomNode(node);
 
-function isVisible(node) {
+function buildVisibilityContext() {
+  const childrenByParent = new Map();
+
+  for (const edge of edges) {
+    if (edge.type !== 'contains') continue;
+    const children = childrenByParent.get(edge.a) || [];
+    children.push(edge.b);
+    childrenByParent.set(edge.a, children);
+  }
+
+  const previewByParent = new Map();
+  for (const [parentId, childIds] of childrenByParent) {
+    if (childIds.length <= LARGE_GROUP_THRESHOLD) continue;
+
+    const preview = childIds
+      .map(id => getNode(id))
+      .filter(Boolean)
+      .sort((a, b) =>
+        Number(b.recent || 0) - Number(a.recent || 0)
+        || String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''))
+        || String(a.title || '').localeCompare(String(b.title || ''))
+      )
+      .slice(0, GROUP_PREVIEW_LIMIT)
+      .map(node => node.id);
+
+    previewByParent.set(parentId, new Set(preview));
+  }
+
+  return { childrenByParent, previewByParent };
+}
+
+function directChildren(parentId, context = buildVisibilityContext()) {
+  return (context.childrenByParent.get(parentId) || [])
+    .map(id => getNode(id))
+    .filter(Boolean);
+}
+
+function isLargeGroupId(parentId, context = buildVisibilityContext()) {
+  return (context.childrenByParent.get(parentId)?.length || 0) > LARGE_GROUP_THRESHOLD;
+}
+
+function isVisible(node, context = buildVisibilityContext()) {
   if (!node || !state.filters.has(node.type)) return false;
   if (state.view === 'projects' && node.type !== 'project' && node.type !== 'collection') return false;
   if (state.view === 'recent' && node.recent < 8) return false;
+
+  if (!state.query && node.parentId && isLargeGroupId(node.parentId, context)) {
+    if (state.selected !== node.id) {
+      if (!state.expandedGroups.has(node.parentId)) return false;
+      if (!context.previewByParent.get(node.parentId)?.has(node.id)) return false;
+    }
+  }
+
   if (
     node.lodMinScale &&
     state.scale < node.lodMinScale &&
     !state.query &&
     state.selected !== node.id &&
-    state.selected !== node.parentId
+    !state.expandedGroups.has(node.parentId)
   ) return false;
+
   if (state.query) {
     const q = state.query.toLowerCase();
     const hay = `${node.title} ${node.summary} ${node.cluster} ${node.type} ${node.url ?? node.rawMetadata?.url ?? ''} ${node.contentText ?? ''} ${node.extractedPreview ?? ''} ${(node.contentBlocks ?? []).map(block => block.text ?? '').join(' ')}`.toLowerCase();
     if (!hay.includes(q)) return false;
   }
+
   return true;
 }
 
-function visibleNodes() { return nodes.filter(isVisible); }
+function visibleNodes(context = buildVisibilityContext()) {
+  return nodes.filter(node => isVisible(node, context));
+}
 
 let initialFitDone = false;
 
