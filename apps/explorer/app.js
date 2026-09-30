@@ -12,6 +12,7 @@ const paletteDark = {
   memory: '#aa9da4',
   chat: '#8f949c',
   link: '#9aa0a7',
+  person: '#b6b6ba',
   other: '#8f949c'
 };
 
@@ -26,6 +27,7 @@ const paletteLight = {
   memory: '#6b5f65',
   chat: '#59616c',
   link: '#59616c',
+  person: '#45454a',
   other: '#67676d'
 };
 
@@ -74,6 +76,7 @@ const labels = {
   memory: 'Memory',
   chat: 'Chats',
   link: 'Links',
+  person: 'People',
   other: 'Other'
 };
 
