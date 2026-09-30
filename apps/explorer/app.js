@@ -1049,9 +1049,11 @@ function setupFilterCounts() {
 }
 
 function updateStats() {
-  const visible = new Set(visibleNodes().map(n=>n.id));
+  const visibilityContext = buildVisibilityContext();
+  const currentNodes = visibleNodes(visibilityContext);
+  const visible = new Set(currentNodes.map(n=>n.id));
   const countEdges = edges.filter(e=>visible.has(e.a)&&visible.has(e.b)).length;
-  const clusters = new Set(visibleNodes().map(n=>n.cluster));
+  const clusters = new Set(currentNodes.map(n=>n.cluster));
   document.querySelector('#nodeCount').textContent = visible.size;
   document.querySelector('#edgeCount').textContent = countEdges;
   document.querySelector('#clusterCount').textContent = clusters.size;
@@ -1128,6 +1130,7 @@ function runRavin(prompt) {
   result.innerHTML = `<strong>Context preview · ${ranked.length} nodes</strong><br>${ranked.map(x=>escapeHtml(x.node.title)).join(' · ')}<br><br><span style="color:var(--ink-faint)">${contextEdges.length} related relationships are included in the Atlas context bundle.</span>`;
 
   state.query = '';
+  state.expandedGroups.clear();
   document.querySelector('#searchInput').value = '';
   state.filters = new Set(Object.keys(labels));
   document.querySelectorAll('.filter').forEach(b=>b.classList.add('active'));
@@ -1215,6 +1218,7 @@ nodeDialog.addEventListener('click', event => {
 
 document.querySelector('#searchInput').addEventListener('input', e => {
   state.query = e.target.value.trim();
+  if (state.query) state.expandedGroups.clear();
   if (state.selected && !isVisible(getNode(state.selected))) selectNode(null);
   updateStats();
   fitGraph();
@@ -1239,6 +1243,7 @@ document.addEventListener('keydown', e => {
 });
 
 document.querySelector('#resetFilters').addEventListener('click', () => {
+  state.expandedGroups.clear();
   state.filters = new Set(Object.keys(labels));
   document.querySelectorAll('.filter').forEach(b=>b.classList.add('active'));
   updateStats();
@@ -1247,6 +1252,7 @@ document.querySelector('#resetFilters').addEventListener('click', () => {
 
 document.querySelectorAll('.view-button').forEach(button => {
   button.addEventListener('click', () => {
+    state.expandedGroups.clear();
     state.view = button.dataset.view;
     document.querySelectorAll('.view-button').forEach(b=>b.classList.toggle('active',b===button));
     if (state.selected && !isVisible(getNode(state.selected))) selectNode(null);
