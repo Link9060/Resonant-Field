@@ -366,10 +366,12 @@ function screenToWorld(x,y) {
 }
 
 function nodeRadius(node) {
-  if (node.type === 'collection') return 11.5;
-  if ((node.type === 'project' || node.type === 'collection')) return 11;
-  if (node.type === 'ravin_conversation') return 8;
-  return 6.5;
+  const lodScale = state.scale < .8 ? .82 : state.scale > 1.6 ? 1.06 : 1;
+  if (node.type === 'collection') return 9.2 * lodScale;
+  if (node.type === 'project') return 9 * lodScale;
+  if (node.type === 'ravin_conversation') return 6 * lodScale;
+  if (node.type === 'person') return 5.4 * lodScale;
+  return 4.6 * lodScale;
 }
 
 function selectedNeighborhood() {
@@ -388,38 +390,98 @@ function isSemanticEdge(edge) {
   return edge.type === 'context' || edge.type === 'cross-project' || edge.type === 'semantic_related';
 }
 
+function shouldDrawEdge(edge, visibleCount, focusId) {
+  const selectedEdge = Boolean(focusId && (edge.a === focusId || edge.b === focusId));
+  if (selectedEdge) return true;
+  if (focusId && visibleCount > 32) return false;
+  if (visibleCount > 180) return edge.type === 'contains' && edge.strength >= .9;
+  if (visibleCount > 90) return edge.type === 'contains' ? edge.strength >= .74 : edge.strength >= .88;
+  if (state.scale < .72) return edge.type === 'contains' && edge.strength >= .84;
+  return true;
+}
+
+function labelPriority(node, neighborhood) {
+  if (state.selected === node.id) return 10000;
+  if (state.hovered === node.id) return 9000;
+  let score = 0;
+  if (node.type === 'collection' || node.type === 'project') score += 2000;
+  if (state.query) score += 1600;
+  if (neighborhood.has(node.id)) score += 1200;
+  score += Number(node.recent || 0) * 45;
+  if (node.virtualCount) score += Math.min(500, Number(node.virtualCount) * 3);
+  return score;
+}
+
+function labelBox(node) {
+  const p = worldToScreen(node);
+  const hub = node.type === 'project' || node.type === 'collection';
+  const label = truncateCanvasLabel(node.title, hub ? 28 : 24);
+  const estimatedWidth = Math.min(hub ? 176 : 142, Math.max(34, label.length * (hub ? 6 : 5.1)));
+  const r = nodeRadius(node);
+  const y = p.y + r + 12;
+  return { left: p.x - estimatedWidth / 2 - 4, right: p.x + estimatedWidth / 2 + 4, top: y - 7, bottom: y + 7 };
+}
+
+function boxesOverlap(a, b) {
+  return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+}
+
+function computeLabelIds(currentlyVisible, neighborhood) {
+  const maxLabels = state.query ? 34 : state.scale < .78 ? 8 : state.scale < 1.12 ? 14 : state.scale < 1.55 ? 22 : 32;
+  const candidates = currentlyVisible
+    .filter(node =>
+      state.selected === node.id
+      || state.hovered === node.id
+      || node.type === 'collection'
+      || node.type === 'project'
+      || state.query
+      || (state.selected && neighborhood.has(node.id))
+      || (state.scale > 1.3 && node.recent >= 8)
+    )
+    .sort((a, b) => labelPriority(b, neighborhood) - labelPriority(a, neighborhood));
+  const accepted = new Set();
+  const boxes = [];
+  for (const node of candidates) {
+    if (accepted.size >= maxLabels && state.selected !== node.id && state.hovered !== node.id) break;
+    const box = labelBox(node);
+    const forced = state.selected === node.id || state.hovered === node.id;
+    if (!forced && boxes.some(existing => boxesOverlap(existing, box))) continue;
+    accepted.add(node.id);
+    boxes.push(box);
+  }
+  return accepted;
+}
+
 function render(now = performance.now()) {
   ctx.clearRect(0,0,width,height);
   drawBackdrop();
-  const currentlyVisible = visibleNodes();
+  const visibilityContext = buildVisibilityContext();
+  const currentlyVisible = visibleNodes(visibilityContext);
   const visible = new Set(currentlyVisible.map(n => n.id));
   const colors = graphTheme();
   const neighborhood = selectedNeighborhood();
+  const focusId = state.selected || state.hovered;
+  const labelIds = computeLabelIds(currentlyVisible, neighborhood);
 
   for (const edge of edges) {
     if (!visible.has(edge.a) || !visible.has(edge.b)) continue;
+    if (!shouldDrawEdge(edge, currentlyVisible.length, focusId)) continue;
     const aState = animatedNodeState(getNode(edge.a), now);
     const bState = animatedNodeState(getNode(edge.b), now);
     const edgeProgress = animatedEdgeProgress(edge, now);
     if (edgeProgress <= 0 || aState.alpha <= 0 || bState.alpha <= 0) continue;
     const a = worldToScreen(aState);
     const bFull = worldToScreen(bState);
-    const b = {
-      x: a.x + (bFull.x - a.x) * edgeProgress,
-      y: a.y + (bFull.y - a.y) * edgeProgress
-    };
-    const focusId = state.selected || state.hovered;
-    const selectedEdge = focusId && (edge.a === focusId || edge.b === focusId);
-    const dimmed = focusId && !selectedEdge;
+    const b = { x: a.x + (bFull.x - a.x) * edgeProgress, y: a.y + (bFull.y - a.y) * edgeProgress };
+    const selectedEdge = Boolean(focusId && (edge.a === focusId || edge.b === focusId));
+    const dimmed = Boolean(focusId && !selectedEdge);
     ctx.beginPath();
     ctx.moveTo(a.x,a.y);
     ctx.lineTo(b.x,b.y);
-    ctx.lineWidth = selectedEdge ? 1.2 : .62;
+    ctx.lineWidth = selectedEdge ? 1.05 : .52;
     ctx.setLineDash(isSemanticEdge(edge) ? [4,5] : []);
-    const opacity = (selectedEdge ? .46 : dimmed ? .018 : .07 + edge.strength*.075) * edgeProgress;
-    ctx.strokeStyle = selectedEdge
-      ? colors.edgeSelected
-      : `rgba(${colors.edge[0]},${colors.edge[1]},${colors.edge[2]},${opacity})`;
+    const opacity = (selectedEdge ? .34 : dimmed ? .01 : .035 + edge.strength * .045) * edgeProgress;
+    ctx.strokeStyle = selectedEdge ? colors.edgeSelected : `rgba(${colors.edge[0]},${colors.edge[1]},${colors.edge[2]},${opacity})`;
     ctx.stroke();
     ctx.setLineDash([]);
   }
@@ -427,7 +489,7 @@ function render(now = performance.now()) {
   for (const node of currentlyVisible) {
     const visual = animatedNodeState(node, now);
     if (visual.alpha <= 0) continue;
-    drawNode(node, !(state.selected || state.hovered) || neighborhood.has(node.id), visual);
+    drawNode(node, !(state.selected || state.hovered) || neighborhood.has(node.id), visual, labelIds.has(node.id), visibilityContext);
   }
 
   if (state.animation) {
