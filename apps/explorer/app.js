@@ -1261,7 +1261,16 @@ document.querySelectorAll('.view-button').forEach(button => {
   });
 });
 
-document.querySelectorAll('.prompt-chip').forEach(button => button.addEventListener('click', () => runRavin(button.dataset.prompt)));
+document.querySelectorAll('.prompt-chip').forEach(button => button.addEventListener('click', () => {
+  const base = ['enterarrow.com','www.enterarrow.com'].includes(location.hostname)
+    ? '/ravin/'
+    : 'https://link9060.github.io/Project-R.A.V.I.N.-1.1/';
+  const url = new URL(base, location.href);
+  url.searchParams.set('from', 'atlas');
+  url.searchParams.set('surface', 'atlas');
+  url.searchParams.set('prompt', button.dataset.prompt || '');
+  location.assign(url.toString());
+}));
 
 document.querySelector('#centerGraph').addEventListener('click', centerGraph);
 document.querySelector('#zoomIn').addEventListener('click', () => { state.scale=Math.min(2.2,state.scale*1.15); updateZoom(); render(); });
