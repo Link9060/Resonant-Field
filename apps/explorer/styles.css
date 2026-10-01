@@ -683,20 +683,14 @@ kbd {
   .form-row { grid-template-columns: 1fr; }
 }
 
-@media (prefers-reduced-motion: reduce) {:root:not([data-arrow-motion="full"]) *,:root:not([data-arrow-motion="full"]) *::before,:root:not([data-arrow-motion="full"]) *::after{
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
     animation-duration: .01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: .01ms !important;
     scroll-behavior: auto !important;
   }
 }
-:root[data-arrow-motion="reduce"] *,:root[data-arrow-motion="reduce"] *::before,:root[data-arrow-motion="reduce"] *::after{
-    animation-duration: .01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: .01ms !important;
-    scroll-behavior: auto !important;
-  }
-
 
 
 /* ---------- Product polish pass ---------- */
@@ -828,10 +822,9 @@ kbd {
   padding-bottom: 22px;
 }
 
-@media (prefers-reduced-motion: reduce) {:root:not([data-arrow-motion="full"]) .hover-card{ transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .hover-card { transition: none; }
 }
-:root[data-arrow-motion="reduce"] .hover-card{ transition: none; }
-
 
 
 /* ---------- Relay account connection ---------- */
@@ -1064,10 +1057,9 @@ body.field-live .ravin-box > p::after {
   transform: translateX(-50%) translateY(0);
 }
 
-@media (prefers-reduced-motion: reduce) {:root:not([data-arrow-motion="full"]) .sync-action.syncing .sync-icon{ animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .sync-action.syncing .sync-icon { animation: none; }
 }
-:root[data-arrow-motion="reduce"] .sync-action.syncing .sync-icon{ animation: none; }
-
 
 
 /* ---------- ARROW system island ---------- */
@@ -1429,18 +1421,19 @@ html.dark .arrow-system-island {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {:root:not([data-arrow-motion="full"]) .arrow-system-island,:root:not([data-arrow-motion="full"]) .arrow-system-content,:root:not([data-arrow-motion="full"]) .arrow-system-mark{
+@media (prefers-reduced-motion: reduce) {
+  .arrow-system-island,
+  .arrow-system-content,
+  .arrow-system-mark {
     transition-duration: .01ms !important;
-  }:root:not([data-arrow-motion="full"]) .arrow-system-launch,:root:not([data-arrow-motion="full"]) .arrow-system-launch-craft,:root:not([data-arrow-motion="full"]) .arrow-system-launch-ring{
+  }
+
+  .arrow-system-launch,
+  .arrow-system-launch-craft,
+  .arrow-system-launch-ring {
     animation-duration: .01ms !important;
   }
 }
-:root[data-arrow-motion="reduce"] .arrow-system-island,:root[data-arrow-motion="reduce"] .arrow-system-content,:root[data-arrow-motion="reduce"] .arrow-system-mark{
-    transition-duration: .01ms !important;
-  }:root[data-arrow-motion="reduce"] .arrow-system-launch,:root[data-arrow-motion="reduce"] .arrow-system-launch-craft,:root[data-arrow-motion="reduce"] .arrow-system-launch-ring{
-    animation-duration: .01ms !important;
-  }
-
 
 
 .arrow-system-arrival {
@@ -1536,37 +1529,10 @@ html.dark .arrow-system-island {
   100% { transform: scale(7.2); opacity: 0; }
 }
 
-@media (prefers-reduced-motion: reduce) {:root:not([data-arrow-motion="full"]) .arrow-system-arrival,:root:not([data-arrow-motion="full"]) .arrow-system-arrival-craft,:root:not([data-arrow-motion="full"]) .arrow-system-arrival-ring{
+@media (prefers-reduced-motion: reduce) {
+  .arrow-system-arrival,
+  .arrow-system-arrival-craft,
+  .arrow-system-arrival-ring {
     animation-duration: .01ms !important;
   }
 }
-:root[data-arrow-motion="reduce"] .arrow-system-arrival,:root[data-arrow-motion="reduce"] .arrow-system-arrival-craft,:root[data-arrow-motion="reduce"] .arrow-system-arrival-ring{
-    animation-duration: .01ms !important;
-  }
-
-.atlas-view-switch { position:absolute; left:24px; top:86px; z-index:5; display:flex;gap:6px;flex-wrap:wrap; }
-.atlas-view-switch button,.atlas-list-pagination button { padding:8px 12px; border:1px solid #80889835; background:var(--surface,#15171ce8); color:inherit; font-size:14px; border-radius:9px;cursor:pointer; }
-.atlas-view-switch button[aria-pressed="true"] {border-color:var(--arrow-accent-color,#8c9ddb);background:rgba(var(--arrow-accent-rgb,140,157,219),.14);}
-.atlas-node-list {position:absolute;inset:145px 20px 60px;overflow:auto;padding:0 12px;display:grid;align-content:start;gap:10px;}
-.atlas-node-list[hidden] {display:none;}
-.atlas-list-item {display:grid;gap:7px;padding:16px;text-align:left;border:1px solid #80889835;border-radius:14px;background:var(--surface,#15171c);color:inherit;cursor:pointer;}
-.atlas-list-item strong {font-size:16px;}.atlas-list-item span,.atlas-list-item small {font-size:14px;opacity:.65;line-height:1.5;}
-.atlas-list-item[aria-pressed="true"] {border-color:var(--arrow-accent-color,#8c9ddb);}
-.atlas-list-pagination {display:flex;gap:12px;padding:12px 0;}
-#graph[hidden] {display:none;}
-html:not(.dark) :is(.atlas-list-item,.atlas-view-switch button,.atlas-list-pagination button) {background:#fff;}
-@media(max-width:700px) {.atlas-view-switch {left:12px;top:80px;right:12px;}.atlas-view-switch button {font-size:12px;padding:8px;}.atlas-node-list {inset:148px 8px 70px;}}
-
-/* Experiences affect the graph workspace, not only the global dock. */
-:root[data-arrow-experience="quiet"] :is(.topbar,.sidebar,.inspector,.hover-card,.atlas-list-item) { border-radius:4px; box-shadow:none; backdrop-filter:none; }
-:root[data-arrow-experience="quiet"] .graph-controls { gap:4px; }
-:root[data-arrow-experience="dynamic"] { --active:rgba(var(--arrow-accent-rgb),.14); }
-:root[data-arrow-experience="dynamic"] :is(.atlas-list-item[aria-pressed="true"],.hover-card,.inspector) { border-color:rgba(var(--arrow-accent-rgb),.5); box-shadow:0 8px 32px rgba(var(--arrow-accent-rgb),.12); }
-:root[data-arrow-experience="glass"] :is(.topbar,.sidebar,.inspector,.hover-card) { background:color-mix(in srgb,var(--surface) 75%,transparent); backdrop-filter:blur(28px) saturate(150%); }
-:root[data-arrow-experience="glass"] .atlas-list-item { border-radius:24px; background:color-mix(in srgb,var(--surface) 80%,transparent); box-shadow:inset 0 1px 0 #ffffff24,0 12px 30px #00000012; }
-:root[data-arrow-experience="glass"] .app-shell { background:radial-gradient(at 0% 0%,rgba(var(--arrow-accent-rgb),.12),transparent 55%),var(--canvas); }
-:root[data-arrow-accent] :is(.icon-action:hover,.view-button.active,.filter-button.active) { border-color:var(--arrow-accent-color); }
-
-.atlas-view-switch {flex-wrap:wrap;}
-.atlas-focus-depth {display:flex;align-items:center;gap:6px;font-size:14px;}
-.atlas-focus-depth select {padding:8px;background:var(--surface);color:var(--ink);border:1px solid var(--border);border-radius:8px;}

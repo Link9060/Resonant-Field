@@ -218,10 +218,7 @@ function setupFilters() {
   }
 }
 
-let nodeIndex = new Map(nodes.map(n=>[n.id,n]));
-let graphRevision = 0;
-function reindex() { nodeIndex=new Map(nodes.map(n=>[n.id,n])); graphRevision++; }
-function getNode(id) { return nodeIndex.get(id); }
+function getNode(id) { return nodes.find(n => n.id === id); }
 
 function clusterAnchor(cluster) {
   if (!cluster) return null;
@@ -378,11 +375,13 @@ function nodeRadius(node) {
 }
 
 function selectedNeighborhood() {
-  const ids=new Set();const focusId=state.selected||state.hovered;if(!focusId)return ids;
-  ids.add(focusId);let frontier=new Set([focusId]);
-  for(let depth=0;depth<(neighborhoodOnly?focusDepth:1);depth++){
-    const next=new Set();for(const edge of edges){if(frontier.has(edge.a)&&!ids.has(edge.b))next.add(edge.b);if(frontier.has(edge.b)&&!ids.has(edge.a))next.add(edge.a);}
-    for(const id of next)ids.add(id);frontier=next;
+  const ids = new Set();
+  const focusId = state.selected || state.hovered;
+  if (!focusId) return ids;
+  ids.add(focusId);
+  for (const edge of edges) {
+    if (edge.a === focusId) ids.add(edge.b);
+    if (edge.b === focusId) ids.add(edge.a);
   }
   return ids;
 }
@@ -453,56 +452,11 @@ function computeLabelIds(currentlyVisible, neighborhood) {
   return accepted;
 }
 
-// A readable list and focused neighborhood accompany the spatial view.
-const graphList = document.createElement('section');
-graphList.className = 'atlas-node-list'; graphList.hidden = true; graphList.setAttribute('aria-label','Atlas knowledge list');
-canvas.after(graphList);
-let listMode = false; let neighborhoodOnly = false; let listPage = 0; let focusDepth = 1; let listSignature = "";
-const navigation = document.createElement('div'); navigation.className='atlas-view-switch';
-navigation.innerHTML = '<button type="button" aria-pressed="true" data-map-mode="graph">Map</button><button type="button" aria-pressed="false" data-map-mode="list">List</button><button type="button" id="atlas-neighborhood" aria-pressed="false">Focus connections</button><label class="atlas-focus-depth">Depth<select id="atlas-depth" aria-label="Connection depth"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></label><button type="button" id="atlas-back">Clear selection</button>';
-document.querySelector('.graph-toolbar').after(navigation);
-function renderKnowledgeList() {
-  if (!listMode) return;
-  const query=state.query.toLowerCase();
-  // List view deliberately includes children collapsed in the spatial map.
-  const matches=nodes.filter(n=>state.filters.has(n.type)&&(!query||`${n.title} ${n.summary||''} ${n.cluster||''}`.toLowerCase().includes(query))&&(state.view!=='projects'||['project','collection'].includes(n.type))&&(state.view!=='recent'||n.recent>=8));
-  const pageSize=60;listPage=Math.min(listPage,Math.max(0,Math.ceil(matches.length/pageSize)-1));
-  const signature=JSON.stringify([graphRevision,state.query,state.view,[...state.filters],state.selected,listPage,neighborhoodOnly,focusDepth]);
-  if(signature===listSignature)return;listSignature=signature;
-  graphList.replaceChildren();
-  const summary=document.createElement('p');summary.textContent=`${matches.length} items · page ${listPage+1} of ${Math.max(1,Math.ceil(matches.length/pageSize))}`;graphList.append(summary);
-  for(const node of matches.slice(listPage*pageSize,(listPage+1)*pageSize)) {
-    const button=document.createElement('button');button.type='button';button.className='atlas-list-item';button.setAttribute('aria-pressed',String(state.selected===node.id));
-    const title=document.createElement('strong');title.textContent=node.title;const meta=document.createElement('span');meta.textContent=`${labels[node.type]||node.type} · ${node.cluster||'Unsorted'}`;const detail=document.createElement('small');detail.textContent=(node.summary||'').slice(0,180);button.append(title,meta,detail);button.onclick=()=>selectNode(node.id);graphList.append(button);
-  }
-  if(!matches.length){const p=document.createElement('p');p.textContent='No items match these filters.';graphList.append(p);}
-  const pager=document.createElement('div');pager.className='atlas-list-pagination';
-  for(const [text,delta] of [['Previous',-1],['Next',1]]) {const b=document.createElement('button');b.textContent=text;b.disabled=delta<0?listPage===0:(listPage+1)*pageSize>=matches.length;b.onclick=()=>{listPage+=delta;renderKnowledgeList();graphList.scrollTop=0;};pager.append(b);}graphList.append(pager);
-}
-navigation.querySelectorAll('[data-map-mode]').forEach(button=>button.onclick=()=>{listMode=button.dataset.mapMode==='list';canvas.hidden=listMode;graphList.hidden=!listMode;navigation.querySelectorAll('[data-map-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));hideHoverCard();renderKnowledgeList();if(!listMode)fitGraph();});
-navigation.querySelector('#atlas-neighborhood').onclick=event=>{neighborhoodOnly=!neighborhoodOnly;event.currentTarget.setAttribute('aria-pressed',String(neighborhoodOnly));fitGraph();};
-navigation.querySelector('#atlas-back').onclick=()=>{neighborhoodOnly=false;navigation.querySelector('#atlas-neighborhood').setAttribute('aria-pressed','false');selectNode(null);};
-navigation.querySelector('#atlas-depth').onchange=event=>{focusDepth=Number(event.target.value);if(state.selected){neighborhoodOnly=true;navigation.querySelector('#atlas-neighborhood').setAttribute('aria-pressed','true');fitGraph();}};
-canvas.tabIndex=0;canvas.style.touchAction='none';
-const touchPoints=new Map();let touchDistance=0;let touchCenter=null;
-canvas.addEventListener('pointerdown',event=>{if(event.pointerType==='mouse')return;canvas.setPointerCapture(event.pointerId);touchPoints.set(event.pointerId,{x:event.clientX,y:event.clientY,startX:event.clientX,startY:event.clientY});touchDistance=0;touchCenter=null;});
-canvas.addEventListener('pointermove',event=>{
-  if(!touchPoints.has(event.pointerId))return;const previous=touchPoints.get(event.pointerId);touchPoints.set(event.pointerId,{...previous,x:event.clientX,y:event.clientY});const points=[...touchPoints.values()];
-  if(points.length===1){state.offsetX+=event.clientX-previous.x;state.offsetY+=event.clientY-previous.y;render();return;}
-  const rect=canvas.getBoundingClientRect();const distance=Math.hypot(points[0].x-points[1].x,points[0].y-points[1].y);const center={x:(points[0].x+points[1].x)/2-rect.left,y:(points[0].y+points[1].y)/2-rect.top};
-  if(touchDistance&&touchCenter){const before=screenToWorld(touchCenter.x,touchCenter.y);state.scale=Math.max(.1,Math.min(4,state.scale*distance/touchDistance));state.offsetX=center.x-width/2-before.x*state.scale;state.offsetY=center.y-height/2-before.y*state.scale;updateZoom();render();}touchDistance=distance;touchCenter=center;
-});
-const endTouch=event=>{const p=touchPoints.get(event.pointerId);if(p&&touchPoints.size===1&&Math.hypot(p.x-p.startX,p.y-p.startY)<8){const r=canvas.getBoundingClientRect();const hit=hitTest(p.x-r.left,p.y-r.top);if(hit)selectNode(hit.id);}touchPoints.delete(event.pointerId);touchDistance=0;touchCenter=null;};
-canvas.addEventListener('pointerup',endTouch);canvas.addEventListener('pointercancel',event=>{touchPoints.delete(event.pointerId);touchDistance=0;touchCenter=null;});
-canvas.addEventListener('keydown',event=>{if(event.key==='Escape'){selectNode(null);return;}const delta=event.shiftKey?80:35;if(event.key==='ArrowLeft')state.offsetX+=delta;else if(event.key==='ArrowRight')state.offsetX-=delta;else if(event.key==='ArrowUp')state.offsetY+=delta;else if(event.key==='ArrowDown')state.offsetY-=delta;else if(event.key==='+'||event.key==='=')state.scale=Math.min(4,state.scale*1.15);else if(event.key==='-')state.scale=Math.max(.1,state.scale/1.15);else if(event.key==='Home'){fitGraph();return;}else return;event.preventDefault();updateZoom();render();});
-
 function render(now = performance.now()) {
   ctx.clearRect(0,0,width,height);
   drawBackdrop();
   const visibilityContext = buildVisibilityContext();
-  let currentlyVisible = visibleNodes(visibilityContext);
-  if(neighborhoodOnly&&state.selected){const scope=selectedNeighborhood();currentlyVisible=currentlyVisible.filter(n=>scope.has(n.id));}
-  renderKnowledgeList();
+  const currentlyVisible = visibleNodes(visibilityContext);
   const visible = new Set(currentlyVisible.map(n => n.id));
   const colors = graphTheme();
   const neighborhood = selectedNeighborhood();
@@ -512,9 +466,8 @@ function render(now = performance.now()) {
   for (const edge of edges) {
     if (!visible.has(edge.a) || !visible.has(edge.b)) continue;
     if (!shouldDrawEdge(edge, currentlyVisible.length, focusId)) continue;
-    const sourceNode=getNode(edge.a),targetNode=getNode(edge.b);if(!sourceNode||!targetNode)continue;
-    const aState = animatedNodeState(sourceNode, now);
-    const bState = animatedNodeState(targetNode, now);
+    const aState = animatedNodeState(getNode(edge.a), now);
+    const bState = animatedNodeState(getNode(edge.b), now);
     const edgeProgress = animatedEdgeProgress(edge, now);
     if (edgeProgress <= 0 || aState.alpha <= 0 || bState.alpha <= 0) continue;
     const a = worldToScreen(aState);
@@ -525,9 +478,9 @@ function render(now = performance.now()) {
     ctx.beginPath();
     ctx.moveTo(a.x,a.y);
     ctx.lineTo(b.x,b.y);
-    ctx.lineWidth = selectedEdge ? 1.4 : .65;
+    ctx.lineWidth = selectedEdge ? 1.05 : .52;
     ctx.setLineDash(isSemanticEdge(edge) ? [4,5] : []);
-    const opacity = (selectedEdge ? .6 : dimmed ? .035 : .09 + edge.strength * .08) * edgeProgress;
+    const opacity = (selectedEdge ? .34 : dimmed ? .01 : .035 + edge.strength * .045) * edgeProgress;
     ctx.strokeStyle = selectedEdge ? colors.edgeSelected : `rgba(${colors.edge[0]},${colors.edge[1]},${colors.edge[2]},${opacity})`;
     ctx.stroke();
     ctx.setLineDash([]);
@@ -854,8 +807,7 @@ function truncateCanvasLabel(value, max) {
 }
 
 function hitTest(x,y) {
-  const scope=neighborhoodOnly&&state.selected?selectedNeighborhood():null;
-  const visible = visibleNodes().filter(n=>!scope||scope.has(n.id)).slice().reverse();
+  const visible = visibleNodes().slice().reverse();
   for (const node of visible) {
     const p = worldToScreen(node);
     const r = nodeRadius(node) + 8;
@@ -995,7 +947,7 @@ function selectNode(id) {
     const idToDelete = btn.dataset.deleteNode;
     const index = nodes.findIndex(item => item.id === idToDelete && item.custom);
     if (index === -1) return;
-    nodes.splice(index, 1); reindex();
+    nodes.splice(index, 1);
     for (let i = edges.length - 1; i >= 0; i--) {
       if (edges[i].a === idToDelete || edges[i].b === idToDelete) edges.splice(i, 1);
     }
@@ -1112,8 +1064,7 @@ function updateStats() {
 }
 
 function fitGraph() {
-  const scope=neighborhoodOnly&&state.selected?selectedNeighborhood():null;
-  const visible = visibleNodes().filter(n=>!scope||scope.has(n.id));
+  const visible = visibleNodes();
   if (!visible.length || width <= 0 || height <= 0) {
     state.scale = 1;
     state.offsetX = 0;
@@ -1139,7 +1090,7 @@ function fitGraph() {
   const scaleX = Math.max(.1, (availableWidth - paddingX * 2) / spanX);
   const scaleY = Math.max(.1, (height - paddingY * 2) / spanY);
 
-  state.scale = Math.max(.1, Math.min(1.45, Math.min(scaleX, scaleY)));
+  state.scale = Math.max(.5, Math.min(1.45, Math.min(scaleX, scaleY)));
   const centerX = (minX + maxX) / 2;
   const centerY = (minY + maxY) / 2;
   const targetX = availableWidth / 2;
@@ -1244,7 +1195,7 @@ nodeForm.addEventListener('submit', event => {
     custom: true
   };
 
-  nodes.push(node); reindex();
+  nodes.push(node);
   attachCustomNode(node);
   saveCustomNodes();
   setupFilterCounts();
@@ -1390,8 +1341,8 @@ canvas.addEventListener('wheel', e => {
   const rect=canvas.getBoundingClientRect();
   const mx=e.clientX-rect.left, my=e.clientY-rect.top;
   const before=screenToWorld(mx,my);
-  const factor=Math.exp(-Math.max(-120,Math.min(120,e.deltaY))*.0025);
-  state.scale=Math.max(.1,Math.min(4,state.scale*factor));
+  const factor=e.deltaY<0?1.09:.92;
+  state.scale=Math.max(.45,Math.min(2.2,state.scale*factor));
   state.offsetX = mx-width/2-before.x*state.scale;
   state.offsetY = my-height/2-before.y*state.scale;
   updateZoom(); render();
@@ -1454,7 +1405,6 @@ window.Atlas = window.FieldExplorer = {
   render,
   selectNode,
   getNode,
-  reindex,
   visibleNodes,
   saveCustomNodes,
   attachCustomNode,
