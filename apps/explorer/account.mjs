@@ -178,10 +178,8 @@ async function loadLiveAccount(user, options = {}) {
       fetchUserState(user.id),
     ]);
 
-    const syncCutoff = userState?.built_at
-      ? (userState.last_synced_at || userState.built_at)
-      : null;
-    const prepared = await prepareDataset(raw, { cutoff: syncCutoff });
+    // Shared edits are immediately visible; manual Sync adds semantic relationships.
+    const prepared = await prepareDataset(raw);
 
     Field.nodes.splice(0, Field.nodes.length, ...prepared.nodes);
     Field.edges.splice(0, Field.edges.length, ...prepared.edges);
@@ -1155,3 +1153,5 @@ function refreshSharedAtlas(){if(!liveMode||!currentUser||loadingAccount||syncin
 window.addEventListener('arrow:planning-changed',refreshSharedAtlas);
 window.addEventListener('storage',event=>{if(event.key==='arrow_shared_data_ping_v1')refreshSharedAtlas();});
 window.addEventListener('focus',refreshSharedAtlas);
+
+setInterval(()=>{if(!document.hidden)refreshSharedAtlas();},30000);
