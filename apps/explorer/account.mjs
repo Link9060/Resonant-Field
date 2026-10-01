@@ -185,6 +185,7 @@ async function loadLiveAccount(user, options = {}) {
 
     Field.nodes.splice(0, Field.nodes.length, ...prepared.nodes);
     Field.edges.splice(0, Field.edges.length, ...prepared.edges);
+    Field.reindex();
     currentUser = user;
     currentUserState = userState;
     liveMode = true;
@@ -863,6 +864,7 @@ async function syncFieldNow(options = {}) {
 
     Field.nodes.splice(0, Field.nodes.length, ...prepared.nodes);
     Field.edges.splice(0, Field.edges.length, ...prepared.edges);
+    Field.reindex();
 
     if (newNodeIds.size || newEdgeIds.size) {
       const plan = createSyncPlan(prepared.nodes, prepared.edges, oldNodeIds, newNodeIds, newEdgeIds);
@@ -987,6 +989,7 @@ function restoreDemo() {
   Field.stopRevealAnimation();
   Field.nodes.splice(0, Field.nodes.length, ...clone(demoNodes));
   Field.edges.splice(0, Field.edges.length, ...clone(demoEdges));
+  Field.reindex();
   resetExplorerForDataset();
 
   document.body.classList.remove('field-live');
@@ -1145,3 +1148,10 @@ void (async function initializeAccount() {
     restoreDemo();
   }
 })();
+
+// Refresh shared planning while Atlas stays open; keep the current map selection.
+let planningRefreshTimer=0;
+function refreshSharedAtlas(){if(!liveMode||!currentUser||loadingAccount||syncing||document.hidden)return;clearTimeout(planningRefreshTimer);planningRefreshTimer=setTimeout(()=>void loadLiveAccount(currentUser,{quiet:true,preserve:true}),250);}
+window.addEventListener('arrow:planning-changed',refreshSharedAtlas);
+window.addEventListener('storage',event=>{if(event.key==='arrow_shared_data_ping_v1')refreshSharedAtlas();});
+window.addEventListener('focus',refreshSharedAtlas);

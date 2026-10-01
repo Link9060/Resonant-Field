@@ -1556,3 +1556,17 @@ html.dark .arrow-system-island {
 #graph[hidden] {display:none;}
 html:not(.dark) :is(.atlas-list-item,.atlas-view-switch button,.atlas-list-pagination button) {background:#fff;}
 @media(max-width:700px) {.atlas-view-switch {left:12px;top:80px;right:12px;}.atlas-view-switch button {font-size:12px;padding:8px;}.atlas-node-list {inset:148px 8px 70px;}}
+
+/* Experiences affect the graph workspace, not only the global dock. */
+:root[data-arrow-experience="quiet"] :is(.topbar,.sidebar,.inspector,.hover-card,.atlas-list-item) { border-radius:4px; box-shadow:none; backdrop-filter:none; }
+:root[data-arrow-experience="quiet"] .graph-controls { gap:4px; }
+:root[data-arrow-experience="dynamic"] { --active:rgba(var(--arrow-accent-rgb),.14); }
+:root[data-arrow-experience="dynamic"] :is(.atlas-list-item[aria-pressed="true"],.hover-card,.inspector) { border-color:rgba(var(--arrow-accent-rgb),.5); box-shadow:0 8px 32px rgba(var(--arrow-accent-rgb),.12); }
+:root[data-arrow-experience="glass"] :is(.topbar,.sidebar,.inspector,.hover-card) { background:color-mix(in srgb,var(--surface) 75%,transparent); backdrop-filter:blur(28px) saturate(150%); }
+:root[data-arrow-experience="glass"] .atlas-list-item { border-radius:24px; background:color-mix(in srgb,var(--surface) 80%,transparent); box-shadow:inset 0 1px 0 #ffffff24,0 12px 30px #00000012; }
+:root[data-arrow-experience="glass"] .app-shell { background:radial-gradient(at 0% 0%,rgba(var(--arrow-accent-rgb),.12),transparent 55%),var(--canvas); }
+:root[data-arrow-accent] :is(.icon-action:hover,.view-button.active,.filter-button.active) { border-color:var(--arrow-accent-color); }
+
+.atlas-view-switch {flex-wrap:wrap;}
+.atlas-focus-depth {display:flex;align-items:center;gap:6px;font-size:14px;}
+.atlas-focus-depth select {padding:8px;background:var(--surface);color:var(--ink);border:1px solid var(--border);border-radius:8px;}

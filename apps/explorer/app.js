@@ -218,7 +218,10 @@ function setupFilters() {
   }
 }
 
-function getNode(id) { return nodes.find(n => n.id === id); }
+let nodeIndex = new Map(nodes.map(n=>[n.id,n]));
+let graphRevision = 0;
+function reindex() { nodeIndex=new Map(nodes.map(n=>[n.id,n])); graphRevision++; }
+function getNode(id) { return nodeIndex.get(id); }
 
 function clusterAnchor(cluster) {
   if (!cluster) return null;
@@ -375,13 +378,11 @@ function nodeRadius(node) {
 }
 
 function selectedNeighborhood() {
-  const ids = new Set();
-  const focusId = state.selected || state.hovered;
-  if (!focusId) return ids;
-  ids.add(focusId);
-  for (const edge of edges) {
-    if (edge.a === focusId) ids.add(edge.b);
-    if (edge.b === focusId) ids.add(edge.a);
+  const ids=new Set();const focusId=state.selected||state.hovered;if(!focusId)return ids;
+  ids.add(focusId);let frontier=new Set([focusId]);
+  for(let depth=0;depth<(neighborhoodOnly?focusDepth:1);depth++){
+    const next=new Set();for(const edge of edges){if(frontier.has(edge.a)&&!ids.has(edge.b))next.add(edge.b);if(frontier.has(edge.b)&&!ids.has(edge.a))next.add(edge.a);}
+    for(const id of next)ids.add(id);frontier=next;
   }
   return ids;
 }
@@ -456,9 +457,9 @@ function computeLabelIds(currentlyVisible, neighborhood) {
 const graphList = document.createElement('section');
 graphList.className = 'atlas-node-list'; graphList.hidden = true; graphList.setAttribute('aria-label','Atlas knowledge list');
 canvas.after(graphList);
-let listMode = false; let neighborhoodOnly = false; let listPage = 0;
+let listMode = false; let neighborhoodOnly = false; let listPage = 0; let focusDepth = 1; let listSignature = "";
 const navigation = document.createElement('div'); navigation.className='atlas-view-switch';
-navigation.innerHTML = '<button type="button" aria-pressed="true" data-map-mode="graph">Map</button><button type="button" aria-pressed="false" data-map-mode="list">List</button><button type="button" id="atlas-neighborhood" aria-pressed="false">Focus connections</button><button type="button" id="atlas-back">Clear selection</button>';
+navigation.innerHTML = '<button type="button" aria-pressed="true" data-map-mode="graph">Map</button><button type="button" aria-pressed="false" data-map-mode="list">List</button><button type="button" id="atlas-neighborhood" aria-pressed="false">Focus connections</button><label class="atlas-focus-depth">Depth<select id="atlas-depth" aria-label="Connection depth"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></label><button type="button" id="atlas-back">Clear selection</button>';
 document.querySelector('.graph-toolbar').after(navigation);
 function renderKnowledgeList() {
   if (!listMode) return;
@@ -466,6 +467,8 @@ function renderKnowledgeList() {
   // List view deliberately includes children collapsed in the spatial map.
   const matches=nodes.filter(n=>state.filters.has(n.type)&&(!query||`${n.title} ${n.summary||''} ${n.cluster||''}`.toLowerCase().includes(query))&&(state.view!=='projects'||['project','collection'].includes(n.type))&&(state.view!=='recent'||n.recent>=8));
   const pageSize=60;listPage=Math.min(listPage,Math.max(0,Math.ceil(matches.length/pageSize)-1));
+  const signature=JSON.stringify([graphRevision,state.query,state.view,[...state.filters],state.selected,listPage,neighborhoodOnly,focusDepth]);
+  if(signature===listSignature)return;listSignature=signature;
   graphList.replaceChildren();
   const summary=document.createElement('p');summary.textContent=`${matches.length} items · page ${listPage+1} of ${Math.max(1,Math.ceil(matches.length/pageSize))}`;graphList.append(summary);
   for(const node of matches.slice(listPage*pageSize,(listPage+1)*pageSize)) {
@@ -477,8 +480,9 @@ function renderKnowledgeList() {
   for(const [text,delta] of [['Previous',-1],['Next',1]]) {const b=document.createElement('button');b.textContent=text;b.disabled=delta<0?listPage===0:(listPage+1)*pageSize>=matches.length;b.onclick=()=>{listPage+=delta;renderKnowledgeList();graphList.scrollTop=0;};pager.append(b);}graphList.append(pager);
 }
 navigation.querySelectorAll('[data-map-mode]').forEach(button=>button.onclick=()=>{listMode=button.dataset.mapMode==='list';canvas.hidden=listMode;graphList.hidden=!listMode;navigation.querySelectorAll('[data-map-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));hideHoverCard();renderKnowledgeList();if(!listMode)fitGraph();});
-navigation.querySelector('#atlas-neighborhood').onclick=event=>{neighborhoodOnly=!neighborhoodOnly;event.currentTarget.setAttribute('aria-pressed',String(neighborhoodOnly));render();};
+navigation.querySelector('#atlas-neighborhood').onclick=event=>{neighborhoodOnly=!neighborhoodOnly;event.currentTarget.setAttribute('aria-pressed',String(neighborhoodOnly));fitGraph();};
 navigation.querySelector('#atlas-back').onclick=()=>{neighborhoodOnly=false;navigation.querySelector('#atlas-neighborhood').setAttribute('aria-pressed','false');selectNode(null);};
+navigation.querySelector('#atlas-depth').onchange=event=>{focusDepth=Number(event.target.value);if(state.selected){neighborhoodOnly=true;navigation.querySelector('#atlas-neighborhood').setAttribute('aria-pressed','true');fitGraph();}};
 canvas.tabIndex=0;canvas.style.touchAction='none';
 const touchPoints=new Map();let touchDistance=0;let touchCenter=null;
 canvas.addEventListener('pointerdown',event=>{if(event.pointerType==='mouse')return;canvas.setPointerCapture(event.pointerId);touchPoints.set(event.pointerId,{x:event.clientX,y:event.clientY,startX:event.clientX,startY:event.clientY});touchDistance=0;touchCenter=null;});
@@ -508,8 +512,9 @@ function render(now = performance.now()) {
   for (const edge of edges) {
     if (!visible.has(edge.a) || !visible.has(edge.b)) continue;
     if (!shouldDrawEdge(edge, currentlyVisible.length, focusId)) continue;
-    const aState = animatedNodeState(getNode(edge.a), now);
-    const bState = animatedNodeState(getNode(edge.b), now);
+    const sourceNode=getNode(edge.a),targetNode=getNode(edge.b);if(!sourceNode||!targetNode)continue;
+    const aState = animatedNodeState(sourceNode, now);
+    const bState = animatedNodeState(targetNode, now);
     const edgeProgress = animatedEdgeProgress(edge, now);
     if (edgeProgress <= 0 || aState.alpha <= 0 || bState.alpha <= 0) continue;
     const a = worldToScreen(aState);
@@ -849,7 +854,8 @@ function truncateCanvasLabel(value, max) {
 }
 
 function hitTest(x,y) {
-  const visible = visibleNodes().slice().reverse();
+  const scope=neighborhoodOnly&&state.selected?selectedNeighborhood():null;
+  const visible = visibleNodes().filter(n=>!scope||scope.has(n.id)).slice().reverse();
   for (const node of visible) {
     const p = worldToScreen(node);
     const r = nodeRadius(node) + 8;
@@ -989,7 +995,7 @@ function selectNode(id) {
     const idToDelete = btn.dataset.deleteNode;
     const index = nodes.findIndex(item => item.id === idToDelete && item.custom);
     if (index === -1) return;
-    nodes.splice(index, 1);
+    nodes.splice(index, 1); reindex();
     for (let i = edges.length - 1; i >= 0; i--) {
       if (edges[i].a === idToDelete || edges[i].b === idToDelete) edges.splice(i, 1);
     }
@@ -1106,7 +1112,8 @@ function updateStats() {
 }
 
 function fitGraph() {
-  const visible = visibleNodes();
+  const scope=neighborhoodOnly&&state.selected?selectedNeighborhood():null;
+  const visible = visibleNodes().filter(n=>!scope||scope.has(n.id));
   if (!visible.length || width <= 0 || height <= 0) {
     state.scale = 1;
     state.offsetX = 0;
@@ -1237,7 +1244,7 @@ nodeForm.addEventListener('submit', event => {
     custom: true
   };
 
-  nodes.push(node);
+  nodes.push(node); reindex();
   attachCustomNode(node);
   saveCustomNodes();
   setupFilterCounts();
@@ -1447,6 +1454,7 @@ window.Atlas = window.FieldExplorer = {
   render,
   selectNode,
   getNode,
+  reindex,
   visibleNodes,
   saveCustomNodes,
   attachCustomNode,
