@@ -1180,7 +1180,7 @@ function runRavin(prompt) {
     result.innerHTML = '<strong>Opening RAVIN…</strong><br><span style="color:var(--ink-faint)">Atlas context will follow you into the intelligence center.</span>';
   }
 
-  window.location.assign(url.toString());
+  window.location.assign(window.ArrowOS?.resolveHref?.(url.toString()) || url.toString());
 }
 
 const nodeDialog = document.querySelector('#nodeDialog');
@@ -1311,7 +1311,7 @@ document.querySelectorAll('.prompt-chip').forEach(button => button.addEventListe
   url.searchParams.set('from', 'atlas');
   url.searchParams.set('surface', 'atlas');
   url.searchParams.set('prompt', button.dataset.prompt || '');
-  location.assign(url.toString());
+  location.assign(window.ArrowOS?.resolveHref?.(url.toString()) || url.toString());
 }));
 
 document.querySelector('#centerGraph').addEventListener('click', centerGraph);

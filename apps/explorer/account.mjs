@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.112.4';
 
 const SUPABASE_URL = 'https://cnorozrjugxpanpfmssa.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_yVNPiB7opT0WRvBfKTZ2BA_s5bOQLRg';
-const ARROW_LOGIN_URL = 'https://enterarrow.com/?next=/atlas/';
+const ARROW_LOGIN_URL = location.pathname.startsWith('/Resonant-Relay/arrow/') ? '/Resonant-Relay/login/' : 'https://enterarrow.com/?next=/atlas/';
 const PAGE_SIZE = 1000;
 const TODO_LOD_SCALE = 1.65;
 const BUILD_LAYOUT_VERSION = 2;
