@@ -41,6 +41,6 @@ jobs:
       - name: Verify Atlas ARROW shell contract
         run: |
           grep -q 'data-arrow-os-shell data-module="atlas"' apps/explorer/index.html
-          grep -q 'Resonant-Orbit/arrow-shell.css' apps/explorer/index.html
-          grep -q 'Resonant-Orbit/arrow-shell.js' apps/explorer/index.html
+          grep -q 'href="/arrow-shell.css?v=' apps/explorer/index.html
+          grep -q 'src="/arrow-shell.js?v=' apps/explorer/index.html
           ! grep -q 'arrow-system.js' apps/explorer/index.html
