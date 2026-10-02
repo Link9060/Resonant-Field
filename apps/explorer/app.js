@@ -1139,7 +1139,7 @@ function fitGraph() {
   const scaleX = Math.max(.1, (availableWidth - paddingX * 2) / spanX);
   const scaleY = Math.max(.1, (height - paddingY * 2) / spanY);
 
-  state.scale = Math.max(.1, Math.min(1.45, Math.min(scaleX, scaleY)));
+  state.scale = Math.max(.1, Math.min(visible.length<16?2.4:1.45, Math.min(scaleX, scaleY)));
   const centerX = (minX + maxX) / 2;
   const centerY = (minY + maxY) / 2;
   const targetX = availableWidth / 2;
