@@ -483,17 +483,17 @@ navigation.querySelectorAll('[data-map-mode]').forEach(button=>button.onclick=()
 navigation.querySelector('#atlas-neighborhood').onclick=event=>{neighborhoodOnly=!neighborhoodOnly;event.currentTarget.setAttribute('aria-pressed',String(neighborhoodOnly));fitGraph();};
 navigation.querySelector('#atlas-back').onclick=()=>{neighborhoodOnly=false;navigation.querySelector('#atlas-neighborhood').setAttribute('aria-pressed','false');selectNode(null);};
 navigation.querySelector('#atlas-depth').onchange=event=>{focusDepth=Number(event.target.value);if(state.selected){neighborhoodOnly=true;navigation.querySelector('#atlas-neighborhood').setAttribute('aria-pressed','true');fitGraph();}};
-canvas.tabIndex=0;canvas.style.touchAction='none';
-const touchPoints=new Map();let touchDistance=0;let touchCenter=null;
-canvas.addEventListener('pointerdown',event=>{if(event.pointerType==='mouse')return;canvas.setPointerCapture(event.pointerId);touchPoints.set(event.pointerId,{x:event.clientX,y:event.clientY,startX:event.clientX,startY:event.clientY});touchDistance=0;touchCenter=null;});
+canvas.tabIndex=0;canvas.dataset.arrowEscapeLocal='true';canvas.setAttribute('aria-label','Knowledge map. Arrow keys pan, plus and minus zoom, Home fits, Escape clears selection.');canvas.style.touchAction='none';
+const touchPoints=new Map();let touchDistance=0;let touchCenter=null;let multiTouch=false;
+canvas.addEventListener('pointerdown',event=>{if(event.pointerType==='mouse')return;event.preventDefault();canvas.setPointerCapture(event.pointerId);touchPoints.set(event.pointerId,{x:event.clientX,y:event.clientY,startX:event.clientX,startY:event.clientY});if(touchPoints.size>1)multiTouch=true;touchDistance=0;touchCenter=null;});
 canvas.addEventListener('pointermove',event=>{
   if(!touchPoints.has(event.pointerId))return;const previous=touchPoints.get(event.pointerId);touchPoints.set(event.pointerId,{...previous,x:event.clientX,y:event.clientY});const points=[...touchPoints.values()];
   if(points.length===1){state.offsetX+=event.clientX-previous.x;state.offsetY+=event.clientY-previous.y;render();return;}
   const rect=canvas.getBoundingClientRect();const distance=Math.hypot(points[0].x-points[1].x,points[0].y-points[1].y);const center={x:(points[0].x+points[1].x)/2-rect.left,y:(points[0].y+points[1].y)/2-rect.top};
   if(touchDistance&&touchCenter){const before=screenToWorld(touchCenter.x,touchCenter.y);state.scale=Math.max(.1,Math.min(4,state.scale*distance/touchDistance));state.offsetX=center.x-width/2-before.x*state.scale;state.offsetY=center.y-height/2-before.y*state.scale;updateZoom();render();}touchDistance=distance;touchCenter=center;
 });
-const endTouch=event=>{const p=touchPoints.get(event.pointerId);if(p&&touchPoints.size===1&&Math.hypot(p.x-p.startX,p.y-p.startY)<8){const r=canvas.getBoundingClientRect();const hit=hitTest(p.x-r.left,p.y-r.top);if(hit)selectNode(hit.id);}touchPoints.delete(event.pointerId);touchDistance=0;touchCenter=null;};
-canvas.addEventListener('pointerup',endTouch);canvas.addEventListener('pointercancel',event=>{touchPoints.delete(event.pointerId);touchDistance=0;touchCenter=null;});
+const endTouch=event=>{const p=touchPoints.get(event.pointerId);if(p&&!multiTouch&&touchPoints.size===1&&Math.hypot(p.x-p.startX,p.y-p.startY)<8){const r=canvas.getBoundingClientRect();const hit=hitTest(p.x-r.left,p.y-r.top);if(hit)selectNode(hit.id);}touchPoints.delete(event.pointerId);if(!touchPoints.size)multiTouch=false;touchDistance=0;touchCenter=null;};
+canvas.addEventListener('pointerup',endTouch);canvas.addEventListener('pointercancel',event=>{touchPoints.delete(event.pointerId);if(!touchPoints.size)multiTouch=false;touchDistance=0;touchCenter=null;});
 canvas.addEventListener('keydown',event=>{if(event.key==='Escape'){selectNode(null);return;}const delta=event.shiftKey?80:35;if(event.key==='ArrowLeft')state.offsetX+=delta;else if(event.key==='ArrowRight')state.offsetX-=delta;else if(event.key==='ArrowUp')state.offsetY+=delta;else if(event.key==='ArrowDown')state.offsetY-=delta;else if(event.key==='+'||event.key==='=')state.scale=Math.min(4,state.scale*1.15);else if(event.key==='-')state.scale=Math.max(.1,state.scale/1.15);else if(event.key==='Home'){fitGraph();return;}else return;event.preventDefault();updateZoom();render();});
 
 function render(now = performance.now()) {
