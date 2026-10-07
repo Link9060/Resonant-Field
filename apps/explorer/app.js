@@ -1198,14 +1198,17 @@ function closeNodeDialog() {
 }
 
 document.querySelector('#themeToggle')?.addEventListener('click', () => {
-  applyTheme(isDarkTheme() ? 'light' : 'dark');
+  const choice = isDarkTheme() ? 'light' : 'dark';
+  if (window.ArrowOS?.applyTheme) window.ArrowOS.applyTheme(choice, true);
+  else applyTheme(choice);
 });
 
 window.addEventListener('arrow:motionchange', event => {
   if (event.detail?.reduced) stopRevealAnimation();
 });
 
-window.addEventListener('arrow:themechange', () => {
+window.addEventListener('arrow:themechange', event => {
+  applyTheme(event.detail?.resolved || document.documentElement.dataset.arrowTheme, false);
   syncFilterColors();
   render();
 });
