@@ -41,6 +41,8 @@ let liveMode = false;
 let currentUser = null;
 let currentUserState = null;
 let loadingAccount = false;
+let accountEpoch = 0;
+let accountIdentity = null;
 let syncing = false;
 
 function clone(value) {
@@ -170,6 +172,8 @@ async function loadRawFieldData() {
 async function loadLiveAccount(user, options = {}) {
   if (loadingAccount) return null;
   loadingAccount = true;
+  const epoch = accountEpoch;
+  accountIdentity = user.id;
   setConnectionState(options.quiet ? 'LIVE' : 'SYNCING');
 
   try {
@@ -181,6 +185,7 @@ async function loadLiveAccount(user, options = {}) {
     // Shared edits are immediately visible; manual Sync adds semantic relationships.
     const prepared = await prepareDataset(raw);
 
+    if (epoch !== accountEpoch) return null;
     Field.nodes.splice(0, Field.nodes.length, ...prepared.nodes);
     Field.edges.splice(0, Field.edges.length, ...prepared.edges);
     Field.reindex();
@@ -207,11 +212,12 @@ async function loadLiveAccount(user, options = {}) {
 
     return { ...prepared, userState };
   } catch (error) {
+    if (epoch !== accountEpoch) return null;
     console.error('Field live account load failed', error);
     showConnectionError('Atlas connected your account, but could not load the graph.');
     return null;
   } finally {
-    loadingAccount = false;
+    if (epoch === accountEpoch) loadingAccount = false;
   }
 }
 
@@ -741,11 +747,15 @@ function hideBuildExperience() {
 
 async function buildMyField() {
   if (!liveMode || !currentUser || buildButton.disabled) return;
+  const epoch = accountEpoch;
+  const buildUser = currentUser;
   buildButton.disabled = true;
+  try {
   buildOverlay.classList.add('building');
   fieldStatus.textContent = 'BUILDING';
 
   await sleep(430);
+  if (epoch !== accountEpoch) return;
 
   const plan = createBuildPlan(Field.nodes, Field.edges);
   buildOverlay.classList.add('releasing');
@@ -754,12 +764,13 @@ async function buildMyField() {
 
   const builtAt = new Date().toISOString();
   const { error: buildStateError } = await supabase.from('field_user_state').upsert({
-    user_id: currentUser.id,
+    user_id: buildUser.id,
     built_at: builtAt,
     last_synced_at: builtAt,
     layout_version: BUILD_LAYOUT_VERSION,
   }, { onConflict: 'user_id' });
 
+  if (epoch !== accountEpoch) return;
   if (buildStateError) {
     console.error('Field build checkpoint failed', buildStateError);
     buildOverlay.classList.remove('building', 'releasing');
@@ -769,13 +780,21 @@ async function buildMyField() {
     return;
   }
 
-  currentUserState = await fetchUserState(currentUser.id);
+  const state = await fetchUserState(buildUser.id);
+  if (epoch !== accountEpoch) return;
+  currentUserState = state;
 
   await sleep(560);
+  if (epoch !== accountEpoch) return;
   hideBuildExperience();
   syncButton.hidden = false;
   fieldStatus.textContent = 'LIVE';
   showSyncFlash('Atlas built');
+  } catch {
+    if (epoch !== accountEpoch) return;
+    buildOverlay.classList.remove('building','releasing');
+    fieldStatus.textContent='ERROR'; showSyncFlash('Could not save Atlas build state');
+  } finally { if (epoch === accountEpoch) buildButton.disabled=false; }
 }
 
 function createBuildPlan(nodes, edges) {
@@ -833,6 +852,8 @@ function createBuildPlan(nodes, edges) {
 async function syncFieldNow(options = {}) {
   if (!liveMode || !currentUser || syncing) return;
   syncing = true;
+  const epoch = accountEpoch;
+  const syncUser = currentUser;
   syncButton.disabled = true;
   syncButton.classList.add('syncing');
   const syncingLabel = syncButton.querySelector('span:last-child');
@@ -860,6 +881,7 @@ async function syncFieldNow(options = {}) {
     const newNodeIds = new Set(prepared.nodes.filter(node => !oldNodeIds.has(node.id)).map(node => node.id));
     const newEdgeIds = new Set(prepared.edges.filter(edge => !oldEdgeIds.has(edge.id)).map(edge => edge.id));
 
+    if (epoch !== accountEpoch) return null;
     Field.nodes.splice(0, Field.nodes.length, ...prepared.nodes);
     Field.edges.splice(0, Field.edges.length, ...prepared.edges);
     Field.reindex();
@@ -876,7 +898,7 @@ async function syncFieldNow(options = {}) {
 
     const syncedAt = new Date().toISOString();
     const { error: syncStateError } = await supabase.from('field_user_state').upsert({
-      user_id: currentUser.id,
+      user_id: syncUser.id,
       built_at: currentUserState?.built_at || syncedAt,
       last_synced_at: syncedAt,
       layout_version: BUILD_LAYOUT_VERSION,
@@ -884,17 +906,21 @@ async function syncFieldNow(options = {}) {
 
     if (syncStateError) throw syncStateError;
 
-    currentUserState = await fetchUserState(currentUser.id);
-    setLiveUi(currentUser, prepared.nodes.length, prepared.edges.length, true, 0, 0);
+    const state = await fetchUserState(syncUser.id);
+    if (epoch !== accountEpoch) return;
+    currentUserState = state;
+    setLiveUi(syncUser, prepared.nodes.length, prepared.edges.length, true, 0, 0);
     syncSucceeded = true;
 
     if (options.selectNodeId && Field.getNode(options.selectNodeId)) {
       setTimeout(() => Field.selectNode(options.selectNodeId), 500);
     }
   } catch (error) {
+    if (epoch !== accountEpoch) return;
     console.error('Atlas sync failed', error);
     showSyncFlash('Sync failed');
   } finally {
+    if (epoch !== accountEpoch) return;
     syncing = false;
     syncButton.disabled = false;
     syncButton.classList.remove('syncing');
@@ -997,6 +1023,7 @@ function restoreDemo() {
   accountEmail.textContent = 'Not connected';
   demoBanner.hidden = false;
   syncButton.hidden = true;
+  syncButton.disabled=false; syncButton.classList.remove('syncing');
   hideBuildExperience();
   nodeDialogMode.textContent = 'DEMO ATLAS NODE';
   nodeDialogFootnote.textContent = 'Demo nodes stay in this browser until you connect ARROW.';
@@ -1131,7 +1158,8 @@ Field.nodeForm.addEventListener('submit', event => {
 }, true);
 
 supabase.auth.onAuthStateChange((event, session) => {
-  if (event === 'SIGNED_OUT' && liveMode) restoreDemo();
+  if (event === 'SIGNED_OUT') { accountIdentity=null; accountEpoch++; loadingAccount=false; syncing=false; restoreDemo(); }
+  if (event === 'SIGNED_IN' && accountIdentity && accountIdentity !== session?.user?.id) { accountEpoch++; loadingAccount=false; syncing=false; restoreDemo(); }
   if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user && !liveMode && !loadingAccount) {
     void loadLiveAccount(session.user);
   }
@@ -1155,3 +1183,4 @@ window.addEventListener('storage',event=>{if(event.key==='arrow_shared_data_ping
 window.addEventListener('focus',refreshSharedAtlas);
 
 setInterval(()=>{if(!document.hidden)refreshSharedAtlas();},30000);
+
