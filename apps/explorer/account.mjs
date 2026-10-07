@@ -8,6 +8,7 @@ const TODO_LOD_SCALE = 1.65;
 const BUILD_LAYOUT_VERSION = 2;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  global: {fetch:(input,init={})=>fetch(input,{...init,signal:init.signal?AbortSignal.any([init.signal,AbortSignal.timeout(20000)]):AbortSignal.timeout(20000)})},
   auth: {
     persistSession: true,
     autoRefreshToken: true,
@@ -43,6 +44,7 @@ let currentUserState = null;
 let loadingAccount = false;
 let accountEpoch = 0;
 let accountIdentity = null;
+let creatingNode = false;
 let syncing = false;
 
 function clone(value) {
@@ -129,6 +131,8 @@ async function fetchAll(table, columns, orderColumn = null) {
   for (let start = 0; ; start += PAGE_SIZE) {
     let query = supabase.from(table).select(columns).range(start, start + PAGE_SIZE - 1);
     if (orderColumn) query = query.order(orderColumn, { ascending: false });
+    const keys=table==='field_node_content'?['node_id']:table==='field_source_preferences'?['source_product','source_type']:['id'];
+    for(const key of keys)query=query.order(key,{ascending:true});
     const { data, error } = await query;
     if (error) throw error;
     rows.push(...(data || []));
@@ -163,7 +167,7 @@ async function loadRawFieldData() {
     fetchAll('field_edges', 'id,user_id,source_node_id,target_node_id,relation_type,strength,origin,metadata,created_at,updated_at', 'updated_at'),
     optionalFetch('field_node_content', 'node_id,user_id,content_kind,text_content,structured_content,mime_type,preview_bucket_id,preview_object_path,preview_alt,updated_at'),
     optionalFetch('field_files', 'id,user_id,node_id,bucket_id,object_path,file_name,mime_type,size_bytes,extraction_status,created_at,updated_at'),
-    optionalFetch('field_source_preferences', 'source_product,source_type,indexed,ravin_read,external_ai_read,allow_writeback'),
+    fetchAll('field_source_preferences', 'source_product,source_type,indexed,ravin_read,external_ai_read,allow_writeback'),
   ]);
 
   return { rawNodes, rawEdges, rawContent, rawFiles, rawPreferences };
@@ -665,7 +669,7 @@ function sourceName(row) {
     return 'Relay';
   }
   if (row.source_product === 'field-system') return 'Field';
-  if (row.source_product === 'field' && row.source_type === 'manual') return 'Atlas';
+  if (row.source_product === 'field' && row.source_type.startsWith('manual')) return 'Atlas';
   if (row.source_product === 'ravin') return 'RAVIN';
   return row.source_product || 'Field';
 }
@@ -1010,6 +1014,7 @@ function restoreDemo() {
   currentUser = null;
   currentUserState = null;
   syncing = false;
+  creatingNode=false;
   Field.stopRevealAnimation();
   Field.nodes.splice(0, Field.nodes.length, ...clone(demoNodes));
   Field.edges.splice(0, Field.edges.length, ...clone(demoEdges));
@@ -1090,6 +1095,7 @@ async function createLiveNode(event) {
   event.preventDefault();
   event.stopImmediatePropagation();
 
+  if(creatingNode)return;
   const title = document.querySelector('#nodeTitle').value.trim();
   if (!title) return;
 
@@ -1099,28 +1105,37 @@ async function createLiveNode(event) {
   const summary = document.querySelector('#nodeSummary').value.trim() || 'User-created Atlas node.';
   const url = document.querySelector('#nodeUrl')?.value.trim() || '';
   const sourceId = crypto.randomUUID();
+  const creationUser = currentUser;
+  const epoch = accountEpoch;
+  const ravinRead = document.querySelector('#nodeRavin').checked;
+  const sourceType = ravinRead ? 'manual:ravin' : 'manual:private';
+  const submitButton=Field.nodeForm.querySelector('button[type="submit"]');
+  creatingNode=true;if(submitButton)submitButton.disabled=true;
+  let createdNodeId=null;
+  try {
 
   const { data: node, error } = await supabase
     .from('field_nodes')
     .insert({
-      user_id: currentUser.id,
+      user_id: creationUser.id,
       type: storageType,
       title: title.slice(0, 240),
       searchable_text: `${title}\n${summary}`,
       source_product: 'field',
       source_id: sourceId,
-      source_type: 'manual',
+      source_type: sourceType,
       metadata: { ...(cluster ? { cluster } : {}), ...(url ? { url } : {}), ...(type === 'person' ? { kind: 'person' } : {}) },
     })
     .select('id')
     .single();
 
+  if(epoch!==accountEpoch)return;
   if (error || !node) {
     console.error('Live Atlas node creation failed', error);
-    alert('Atlas could not save that node.');
-    return;
+    throw new Error('Atlas could not save that node. Your draft is still here.');
   }
 
+  createdNodeId=node.id;
   let contentKind = 'text';
   let structuredContent = {};
   if (type === 'todo') {
@@ -1130,26 +1145,39 @@ async function createLiveNode(event) {
 
   const { error: contentError } = await supabase.from('field_node_content').insert({
     node_id: node.id,
-    user_id: currentUser.id,
+    user_id: creationUser.id,
     content_kind: contentKind,
     text_content: summary,
     structured_content: structuredContent,
   });
 
-  if (contentError) console.warn('Atlas node content could not be saved', contentError);
+  if(epoch!==accountEpoch)return;
+  if (contentError) throw new Error('Atlas could not save the node content. Your draft is still here.');
 
-  await supabase.from('field_source_preferences').upsert({
-    user_id: currentUser.id,
+  const {error:preferenceError}=await supabase.from('field_source_preferences').upsert({
+    user_id: creationUser.id,
     source_product: 'field',
-    source_type: 'manual',
+    source_type: sourceType,
     indexed: true,
-    ravin_read: document.querySelector('#nodeRavin').checked,
+    ravin_read: ravinRead,
     external_ai_read: false,
     allow_writeback: true,
   }, { onConflict: 'user_id,source_product,source_type' });
 
+  if(epoch!==accountEpoch)return;
+  if(preferenceError)throw new Error('Atlas could not confirm the AI access setting. Your draft is still here.');
   Field.closeNodeDialog();
   await syncFieldNow({ selectNodeId: node.id });
+  } catch(error) {
+    if(epoch!==accountEpoch)return;
+    let rollbackFailed=false;
+    if(createdNodeId){
+      try { const result=await supabase.from('field_nodes').delete().eq('id',createdNodeId).eq('user_id',creationUser.id);rollbackFailed=Boolean(result.error); } catch {rollbackFailed=true;}
+    }
+    alert((error?.message || 'Atlas could not save this node.')+(rollbackFailed?' A partial node may exist; check Atlas before retrying.':''));
+  } finally {
+    if(epoch===accountEpoch){creatingNode=false;if(submitButton)submitButton.disabled=false;}
+  }
 }
 
 Field.nodeForm.addEventListener('submit', event => {
