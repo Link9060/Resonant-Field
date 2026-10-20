@@ -1584,3 +1584,47 @@ html.dark { --ink-faint:#9699a4; }
 .node-dialog { max-height:calc(100dvh - 32px); overflow-y:auto; overscroll-behavior:contain; }
 :root[data-arrow-motion="reduce"] .app-shell { animation:none; }
 @media(max-width:680px) { .topbar { flex-wrap:wrap; height:auto; min-height:58px; gap:8px; padding:10px; } .top-actions { flex-wrap:wrap; gap:6px; } .atlas-navigation { flex-wrap:wrap; max-width:calc(100vw - 24px); } }
+
+
+/* Atlas uses ARROW appearance as the single light/dark authority. */
+:root[data-arrow-theme="light"] {
+  color-scheme:light; --canvas:#f5f7fa; --surface:#fff; --surface-raised:#fff;
+  --border:#dbe1e9; --ink:#172132; --ink-muted:#566377; --ink-faint:#69768a;
+  --toolbar:rgb(255 255 255 / .93); --inspector:rgb(255 255 255 / .98);
+  --hover:#eaf0f7; --active:#e2e9f4;
+}
+:root[data-arrow-theme="dark"] {
+  color-scheme:dark; --canvas:#08090d; --surface:#12151c; --surface-raised:#1a202b;
+  --border:#333b49; --ink:#f4f6fb; --ink-muted:#b0b9c6; --ink-faint:#939eae;
+  --toolbar:rgb(15 18 26 / .93); --inspector:rgb(17 20 28 / .98);
+  --hover:#202633; --active:#273144;
+}
+:root[data-arrow-theme="light"] .app-shell,
+:root[data-arrow-theme="dark"] .app-shell { color:var(--ink); background:var(--canvas); }
+:root[data-arrow-theme="light"] :is(.topbar,.sidebar,.inspector,.hover-card,.atlas-list-item,.atlas-list-row,.node-dialog),
+:root[data-arrow-theme="dark"] :is(.topbar,.sidebar,.inspector,.hover-card,.atlas-list-item,.atlas-list-row,.node-dialog) {
+  color:var(--ink); border-color:var(--border);
+}
+:root[data-arrow-theme="light"] :is(.filter.active,.view-button.active,.atlas-list-row.is-selected),
+:root[data-arrow-theme="dark"] :is(.filter.active,.view-button.active,.atlas-list-row.is-selected) {
+  background:rgb(var(--arrow-accent-rgb,100,123,171) / .10);
+  border-color:rgb(var(--arrow-accent-rgb,100,123,171) / .25);
+  color:var(--ink);
+}
+:root[data-arrow-theme] :is(.node-dialog input,.node-dialog textarea,.node-dialog select,.atlas-focus-depth select) {
+  background:var(--surface-raised); color:var(--ink); border-color:var(--border); color-scheme:inherit;
+}
+:root[data-arrow-adapt="bloom"] .app-shell { --arrow-atlas-radius:22px; }
+:root[data-arrow-adapt="haven"] .app-shell { --arrow-atlas-radius:16px; }
+:root[data-arrow-adapt="atelier"] .app-shell { --arrow-atlas-radius:5px; }
+:root[data-arrow-adapt="pulse"] .app-shell { --arrow-atlas-radius:16px; }
+:root:not([data-arrow-adapt="core"]) :is(.inspector,.hover-card,.atlas-list-item) { border-radius:var(--arrow-atlas-radius,12px); }
+:root[data-arrow-experience="dynamic"] .app-shell {
+  background:radial-gradient(at 92% 5%,rgb(var(--arrow-accent-rgb,100,120,190) / .10),transparent 46%),var(--canvas);
+}
+:root[data-arrow-theme="light"][data-arrow-experience="glass"] :is(.topbar,.sidebar,.inspector) {
+  background:rgb(255 255 255 / .83); backdrop-filter:blur(24px);
+}
+:root[data-arrow-theme="dark"][data-arrow-experience="glass"] :is(.topbar,.sidebar,.inspector) {
+  background:rgb(18 21 29 / .84); backdrop-filter:blur(24px);
+}
