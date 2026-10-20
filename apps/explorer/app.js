@@ -51,8 +51,14 @@ function palette() {
   return isDarkTheme() ? paletteDark : paletteLight;
 }
 
+let graphIdentityThemeCache = null;
 function graphTheme() {
-  return isDarkTheme()
+  const root = document.documentElement;
+  const identity = root.dataset.arrowAdapt || 'core';
+  const dark = isDarkTheme();
+  const key = identity + ':' + (dark ? 'dark' : 'light');
+  if (graphIdentityThemeCache?.key === key) return graphIdentityThemeCache.value;
+  const base = dark
     ? {
         edge: [166, 166, 174],
         edgeSelected: 'rgba(238,238,242,.42)',
@@ -75,6 +81,37 @@ function graphTheme() {
         ringSelected: 'rgba(17,17,17,.44)',
         selectedNode: '#111113'
       };
+  if (identity === 'core') {
+    graphIdentityThemeCache = { key, value: base };
+    return base;
+  }
+  // Canvas colors cannot inherit CSS variables directly. Read the active Adapt
+  // accent once and use it for focus rings and selections, without mutating nodes.
+  const accent = getComputedStyle(root).getPropertyValue('--arrow-adapt-primary').trim()
+    || getComputedStyle(root).getPropertyValue('--arrow-accent-color').trim()
+    || base.selectedNode;
+  const variants = {
+    bloom: {
+      ...base, ringSelected:accent, selectedNode:accent,
+      grid:dark ? 'rgba(231,166,219,.045)' : 'rgba(149,93,142,.05)',
+    },
+    haven: {
+      ...base, ringSelected:accent, selectedNode:accent,
+      grid:dark ? 'rgba(163,181,143,.034)' : 'rgba(88,112,91,.047)',
+    },
+    atelier: {
+      ...base, selectedNode:accent, ringSelected:accent,
+      grid:dark ? 'rgba(255,255,255,.012)' : 'rgba(25,25,25,.018)',
+      ring:dark ? 'rgba(255,255,255,.055)' : 'rgba(25,25,25,.065)',
+    },
+    pulse: {
+      ...base, ringSelected:accent, edgeSelected:accent, selectedNode:accent,
+      grid:dark ? 'rgba(154,118,250,.075)' : 'rgba(114,81,201,.055)',
+    },
+  };
+  const value = variants[identity] || base;
+  graphIdentityThemeCache = { key, value };
+  return value;
 }
 
 const labels = {
@@ -1222,9 +1259,11 @@ window.addEventListener('arrow:motionchange', event => {
   if (event.detail?.reduced) stopRevealAnimation();
 });
 
-window.addEventListener('arrow:adaptchange', () => { canvasFonts.identity = null; render(); });
+window.addEventListener('arrow:adaptchange', () => { canvasFonts.identity = null; graphIdentityThemeCache = null; render(); });
+window.addEventListener('arrow:accentchange', () => { graphIdentityThemeCache = null; render(); });
 if (document.fonts?.ready) void document.fonts.ready.then(() => { canvasFonts.identity = null; render(); });
 window.addEventListener('arrow:themechange', event => {
+  graphIdentityThemeCache = null;
   applyTheme(event.detail?.resolved || document.documentElement.dataset.arrowTheme, false);
   syncFilterColors();
   render();
