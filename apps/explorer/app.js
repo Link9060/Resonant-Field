@@ -1167,7 +1167,10 @@ function centerGraph() {
 }
 
 function updateZoom() {
-  document.querySelector('#zoomLabel').textContent = `${Math.round(state.scale*100)}%`;
+  const value = `${Math.round(state.scale*100)}%`;
+  document.querySelector('#zoomLabel').textContent = value;
+  const mobileZoom = document.querySelector('#atlasMapZoomLabel');
+  if (mobileZoom) mobileZoom.textContent = value;
 }
 
 function runRavin(prompt) {
@@ -1286,6 +1289,7 @@ document.querySelector('#searchInput').addEventListener('input', e => {
 document.addEventListener('keydown', e => {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase()==='k') {
     e.preventDefault();
+    if (matchMedia('(max-width: 760px)').matches) setAtlasFiltersOpen(true);
     document.querySelector('#searchInput').focus();
   }
   if (e.key === 'Escape') selectNode(null);
@@ -1331,6 +1335,36 @@ document.querySelectorAll('.prompt-chip').forEach(button => button.addEventListe
   location.assign(window.ArrowOS?.resolveHref?.(url.toString()) || url.toString());
 }));
 
+// The map control layer is a second, consistent interface over existing graph
+// functions. It doesn't mutate nodes, filters, or account state.
+const mobileFilterToggle = document.querySelector('#atlasMobileFilters');
+const mobileSidebar = document.querySelector('#atlasSidebar');
+const mobileScrim = document.querySelector('#atlasMobileScrim');
+function setAtlasFiltersOpen(open, restoreFocus = false) {
+  const next = Boolean(open) && matchMedia('(max-width: 760px)').matches;
+  document.documentElement.classList.toggle('atlas-filters-open', next);
+  mobileFilterToggle?.setAttribute('aria-expanded', String(next));
+  mobileFilterToggle?.setAttribute('aria-label', next ? 'Close Atlas filters' : 'Open Atlas filters');
+  if (mobileScrim) mobileScrim.hidden = !next;
+  if (next) mobileSidebar?.querySelector('#searchInput')?.focus({ preventScroll: true });
+  else if (restoreFocus) mobileFilterToggle?.focus({ preventScroll: true });
+}
+mobileFilterToggle?.addEventListener('click', () => {
+  setAtlasFiltersOpen(!document.documentElement.classList.contains('atlas-filters-open'), true);
+});
+mobileScrim?.addEventListener('click', () => setAtlasFiltersOpen(false, true));
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && document.documentElement.classList.contains('atlas-filters-open')) {
+    event.stopPropagation();
+    setAtlasFiltersOpen(false, true);
+  }
+});
+matchMedia('(min-width: 761px)').addEventListener('change', event => {
+  if (event.matches) setAtlasFiltersOpen(false);
+});
+document.querySelector('#atlasMapFit')?.addEventListener('click', centerGraph);
+document.querySelector('#atlasMapPlus')?.addEventListener('click', () => document.querySelector('#zoomIn')?.click());
+document.querySelector('#atlasMapMinus')?.addEventListener('click', () => document.querySelector('#zoomOut')?.click());
 document.querySelector('#centerGraph').addEventListener('click', centerGraph);
 document.querySelector('#zoomIn').addEventListener('click', () => { state.scale=Math.min(2.2,state.scale*1.15); updateZoom(); render(); });
 document.querySelector('#zoomOut').addEventListener('click', () => { state.scale=Math.max(.45,state.scale/1.15); updateZoom(); render(); });
