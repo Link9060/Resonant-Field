@@ -1664,3 +1664,137 @@ html.dark { --ink-faint:#9699a4; }
 }
 :root:not([data-arrow-adapt="core"]) .app-shell :is(.inspector,.hover-card,.atlas-list-item,.node-dialog) { border-radius:var(--arrow-identity-radius,12px)!important; }
 :root[data-arrow-motion="reduce"] .app-shell :is(.atlas-list-item,.filter,.node-source-link) { transform:none!important; transition:none!important; }
+
+
+/* ARROW Adapt III · Atlas cartography and explorer composition variants. */
+:root[data-arrow-adapt]:not([data-arrow-adapt="core"]) .app-shell {
+  --atlas-identity-primary:var(--arrow-adapt-primary,#7588a6);
+  --atlas-identity-secondary:var(--arrow-adapt-secondary,#becad4);
+}
+:root[data-arrow-adapt]:not([data-arrow-adapt="core"]) .app-shell
+  :is(.topbar,.sidebar,.inspector,.hover-card,.atlas-list-item,.node-dialog,.toolbar-buttons button,.filter) {
+  border-color:color-mix(in srgb,var(--atlas-identity-primary) 23%,var(--border));
+}
+/* BLOOM: cards floating over a soft exploration canvas. */
+@media(min-width:761px) {
+  :root[data-arrow-adapt="bloom"] .app-shell { grid-template-columns:222px minmax(0,1fr); gap:11px; padding:9px; }
+  :root[data-arrow-adapt="bloom"] .app-shell .topbar { grid-column:1 / -1; margin:0 2px; }
+  :root[data-arrow-adapt="bloom"] .app-shell .sidebar {
+    margin:0;border-radius:26px;padding:16px 9px;
+    border:2px solid color-mix(in srgb,var(--atlas-identity-secondary) 50%,var(--border));
+  }
+}
+:root[data-arrow-adapt="bloom"] .app-shell {
+  background:radial-gradient(ellipse at 86% 6%,color-mix(in srgb,var(--atlas-identity-secondary) 30%,transparent),transparent 42%),var(--canvas);
+}
+:root[data-arrow-adapt="bloom"] .app-shell .topbar {
+  background:color-mix(in srgb,var(--surface) 91%,var(--atlas-identity-secondary));
+  border-radius:20px; border:1px solid color-mix(in srgb,var(--atlas-identity-secondary) 44%,var(--border));
+  box-shadow:0 9px 25px color-mix(in srgb,var(--atlas-identity-primary) 10%,transparent);
+}
+:root[data-arrow-adapt="bloom"] .app-shell :is(.filter,.view-button,.icon-action,.square-action) { border-radius:16px!important; }
+:root[data-arrow-adapt="bloom"] .app-shell :is(.filter.active,.view-button.active) {
+  background:color-mix(in srgb,var(--atlas-identity-primary) 20%,var(--surface));
+  border-color:var(--atlas-identity-secondary);
+}
+:root[data-arrow-adapt="bloom"] .app-shell :is(.inspector,.hover-card,.atlas-list-item,.node-dialog) {
+  border-radius:26px!important;
+  background:color-mix(in srgb,var(--surface) 93%,var(--atlas-identity-secondary));
+  box-shadow:0 12px 29px color-mix(in srgb,var(--atlas-identity-primary) 10%,transparent);
+}
+:root[data-arrow-adapt="bloom"] .app-shell .sidebar { background:color-mix(in srgb,var(--surface) 89%,var(--atlas-identity-secondary)); }
+/* HAVEN: an annotated paper field notebook. */
+:root[data-arrow-adapt="haven"] .app-shell {
+  background:repeating-linear-gradient(0deg,transparent 0 39px,color-mix(in srgb,var(--atlas-identity-primary) 6%,transparent) 40px),var(--canvas);
+}
+:root[data-arrow-adapt="haven"] .app-shell .topbar {
+  border-bottom:2px solid color-mix(in srgb,var(--atlas-identity-primary) 45%,var(--border));
+  background:color-mix(in srgb,var(--surface) 91%,var(--atlas-identity-secondary));
+}
+:root[data-arrow-adapt="haven"] .app-shell .sidebar {
+  background:color-mix(in srgb,var(--surface) 94%,var(--atlas-identity-secondary));
+  border-right:3px double var(--atlas-identity-primary);
+}
+:root[data-arrow-adapt="haven"] .app-shell :is(.sidebar-section,.filter-group,.related-list) {
+  border-bottom:1px solid color-mix(in srgb,var(--atlas-identity-primary) 23%,var(--border));
+}
+:root[data-arrow-adapt="haven"] .app-shell .filter.active {
+  background:color-mix(in srgb,var(--atlas-identity-secondary) 24%,var(--surface));
+  border-left:3px solid var(--atlas-identity-primary);
+}
+:root[data-arrow-adapt="haven"] .app-shell :is(.inspector,.hover-card,.atlas-list-item,.node-dialog) {
+  border-radius:8px!important;
+  border-left:3px solid var(--atlas-identity-primary);
+  background:color-mix(in srgb,var(--surface) 95%,var(--atlas-identity-secondary));
+  box-shadow:5px 7px 0 color-mix(in srgb,var(--atlas-identity-primary) 8%,transparent);
+}
+/* ATELIER: cartographic index and austere map composition. */
+:root[data-arrow-adapt="atelier"] .app-shell { background:var(--canvas); }
+:root[data-arrow-adapt="atelier"] .app-shell .topbar {
+  border-bottom:1px solid var(--ink); background:var(--canvas); box-shadow:none;
+}
+:root[data-arrow-adapt="atelier"] .app-shell .topbar :is(h1,strong) {
+  font-family:var(--arrow-font-display)!important;font-weight:400;
+}
+:root[data-arrow-adapt="atelier"] .app-shell .sidebar {
+  background:var(--canvas); border-right:1px solid var(--border);
+  padding-inline:15px;
+}
+:root[data-arrow-adapt="atelier"] .app-shell :is(.sidebar-section,.filter,.view-button) {
+  border-radius:0!important;
+}
+:root[data-arrow-adapt="atelier"] .app-shell .sidebar-section :is(h2,h3,small) {
+  text-transform:uppercase;letter-spacing:.2em;
+}
+:root[data-arrow-adapt="atelier"] .app-shell :is(.filter.active,.view-button.active) {
+  color:var(--ink);background:transparent!important;border-bottom:2px solid var(--atlas-identity-primary);
+}
+:root[data-arrow-adapt="atelier"] .app-shell :is(.inspector,.hover-card,.atlas-list-item,.node-dialog) {
+  border-radius:2px!important;box-shadow:none!important;
+  background:var(--surface);border-color:var(--border);
+}
+:root[data-arrow-adapt="atelier"] .app-shell .inspector {
+  border-left:2px solid var(--atlas-identity-primary);
+}
+/* PULSE: navigational scanner with dramatic saturated route selections. */
+:root[data-arrow-adapt="pulse"] .app-shell {
+  background:radial-gradient(ellipse at 85% 8%,color-mix(in srgb,var(--atlas-identity-primary) 22%,transparent),transparent 46%),
+             radial-gradient(ellipse at 15% 95%,color-mix(in srgb,var(--atlas-identity-secondary) 11%,transparent),transparent 39%),var(--canvas);
+}
+:root[data-arrow-adapt="pulse"] .app-shell .topbar {
+  border-bottom:2px solid var(--atlas-identity-secondary);
+  background:color-mix(in srgb,var(--atlas-identity-primary) 13%,var(--surface));
+  box-shadow:0 8px 20px color-mix(in srgb,var(--atlas-identity-primary) 10%,transparent);
+}
+:root[data-arrow-adapt="pulse"] .app-shell .sidebar {
+  border-right:2px solid var(--atlas-identity-primary);
+  background:linear-gradient(150deg,color-mix(in srgb,var(--atlas-identity-primary) 18%,var(--surface)),var(--surface));
+}
+:root[data-arrow-adapt="pulse"] .app-shell :is(.filter,.view-button,.icon-action,.square-action) {
+  border-radius:3px 14px 3px 14px!important;
+  font-weight:760;letter-spacing:.025em;
+}
+:root[data-arrow-adapt="pulse"] .app-shell :is(.filter.active,.view-button.active) {
+  border:1px solid var(--atlas-identity-secondary);
+  background:color-mix(in srgb,var(--atlas-identity-primary) 23%,var(--surface));
+  box-shadow:0 0 15px color-mix(in srgb,var(--atlas-identity-primary) 18%,transparent);
+}
+:root[data-arrow-adapt="pulse"] .app-shell :is(.inspector,.hover-card,.atlas-list-item,.node-dialog) {
+  border:1px solid color-mix(in srgb,var(--atlas-identity-secondary) 48%,var(--border));
+  border-radius:4px 20px 4px 20px!important;
+  background:color-mix(in srgb,var(--surface) 88%,var(--atlas-identity-primary));
+  box-shadow:0 13px 28px color-mix(in srgb,var(--atlas-identity-primary) 15%,transparent);
+}
+:root[data-arrow-adapt="pulse"] .app-shell :is(.inspector,.node-dialog) h2 {
+  font-size:clamp(19px,2.5vw,31px);font-weight:850;text-transform:uppercase;letter-spacing:-.04em;
+}
+@media(max-width:760px) {
+  :root[data-arrow-adapt="bloom"] .app-shell { padding:0; gap:0; }
+  :root[data-arrow-adapt="bloom"] .app-shell .topbar { border-radius:0 0 20px 20px; margin:0; }
+  :root[data-arrow-adapt="atelier"] .app-shell .topbar { border-radius:0; }
+}
+@media(prefers-reduced-motion:reduce) {
+  :root:not([data-arrow-motion="full"])[data-arrow-adapt] .app-shell :is(.filter,.atlas-list-item,.hover-card) {
+    transform:none!important;transition:none!important;animation:none!important;
+  }
+}
