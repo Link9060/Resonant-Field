@@ -1552,3 +1552,15 @@ html[data-arrow-identity="pulse"] :is(.hero-panel,.content-panel,.card,.panel,.s
 html[data-arrow-identity="pulse"] button:focus-visible { outline:2px solid #55b8ff; }
 html[data-arrow-accent="custom"] { --accent:var(--arrow-custom-accent,#6785ff); }
 @media(prefers-reduced-motion:reduce){html[data-arrow-identity] *{scroll-behavior:auto;}}
+
+/* Adapt's explorer-specific spatial identities. */
+@media(min-width:1000px){
+html[data-arrow-identity="bloom"] .sidebar { width:310px; min-width:270px; }
+html[data-arrow-identity="haven"] .sidebar { width:270px; }
+html[data-arrow-identity="atelier"] .sidebar { width:215px; }
+html[data-arrow-identity="pulse"] .sidebar { width:330px; }
+}
+html[data-arrow-identity="bloom"] :is(.sidebar,.topbar) { background:color-mix(in srgb,var(--surface) 88%,#8ecda0); }
+html[data-arrow-identity="haven"] :is(.sidebar,.topbar) { background:color-mix(in srgb,var(--surface) 90%,#c9a887); }
+html[data-arrow-identity="atelier"] :is(.sidebar,.topbar) { border-radius:0; }
+html[data-arrow-identity="pulse"] :is(.sidebar,.topbar) { border-color:rgba(85,184,255,.32); }
