@@ -1,5 +1,17 @@
 const canvas = document.querySelector('#graph');
 const ctx = canvas.getContext('2d');
+// Canvas text has no CSS inheritance: resolve the same identity font tokens as DOM.
+const canvasFonts = { identity: null, body: 'Inter, system-ui', display: 'Inter, system-ui' };
+function graphFont(weight, px, kind = 'body') {
+  const identity = document.documentElement.dataset.arrowAdapt || 'core';
+  if (canvasFonts.identity !== identity) {
+    const styles = getComputedStyle(document.documentElement);
+    canvasFonts.body = styles.getPropertyValue('--arrow-font-body').trim() || 'Inter, system-ui';
+    canvasFonts.display = styles.getPropertyValue('--arrow-font-display').trim() || canvasFonts.body;
+    canvasFonts.identity = identity;
+  }
+  return weight + ' ' + px + 'px ' + canvasFonts[kind];
+}
 
 const paletteDark = {
   collection: '#f1f1f3',
@@ -716,7 +728,7 @@ function drawNode(node, inFocus = true, visual = node, showLabel = false, visibi
 
   if (showLabel && inFocus) {
     const label = truncateCanvasLabel(node.title, project ? 28 : 24);
-    ctx.font = project ? '600 11px Inter, system-ui' : '500 9px Inter, system-ui';
+    ctx.font = project ? graphFont(600,11,'display') : graphFont(500,9);
     ctx.textBaseline = 'middle';
     ctx.fillStyle = selected || hovered ? colors.activeLabel : project ? colors.hubLabel : colors.label;
     ctx.globalAlpha = alpha;
@@ -754,7 +766,7 @@ function drawGroupCountBadge(p, r, count, expanded, alpha) {
   ctx.lineWidth = .7;
   ctx.stroke();
   ctx.fillStyle = dark ? '#d4d4d8' : '#35353a';
-  ctx.font = '700 7px Inter, system-ui';
+  ctx.font = graphFont(700,7);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(text, badgeX, badgeY + .5);
@@ -815,12 +827,12 @@ function drawClosePreview(node, p, alpha) {
   }
 
   ctx.fillStyle = dark ? '#f2f2f3' : '#171719';
-  ctx.font = '600 8.5px Inter, system-ui';
+  ctx.font = graphFont(600,8.5,'display');
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
   ctx.fillText(truncateCanvasLabel(node.title, 19), x + 8, y + 8);
   ctx.fillStyle = dark ? '#85858d' : '#707077';
-  ctx.font = '500 7.5px Inter, system-ui';
+  ctx.font = graphFont(500,7.5);
   const preview = truncateCanvasLabel(node.summary || node.extractedPreview || node.type, 30);
   ctx.fillText(preview, x + 8, y + 23);
   ctx.restore();
@@ -1207,6 +1219,8 @@ window.addEventListener('arrow:motionchange', event => {
   if (event.detail?.reduced) stopRevealAnimation();
 });
 
+window.addEventListener('arrow:adaptchange', () => { canvasFonts.identity = null; render(); });
+if (document.fonts?.ready) void document.fonts.ready.then(() => { canvasFonts.identity = null; render(); });
 window.addEventListener('arrow:themechange', event => {
   applyTheme(event.detail?.resolved || document.documentElement.dataset.arrowTheme, false);
   syncFilterColors();
