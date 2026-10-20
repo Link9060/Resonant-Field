@@ -1564,3 +1564,15 @@ html[data-arrow-identity="bloom"] :is(.sidebar,.topbar) { background:color-mix(i
 html[data-arrow-identity="haven"] :is(.sidebar,.topbar) { background:color-mix(in srgb,var(--surface) 90%,#c9a887); }
 html[data-arrow-identity="atelier"] :is(.sidebar,.topbar) { border-radius:0; }
 html[data-arrow-identity="pulse"] :is(.sidebar,.topbar) { border-color:rgba(85,184,255,.32); }
+
+/* Reconcile class-based explorer palette with ARROW appearance. */
+html[data-arrow-theme="light"]:not(.dark) { color-scheme:light; }
+html[data-arrow-theme="light"]:not(.dark) :is(input,textarea,select) { color:var(--ink); }
+html[data-arrow-identity="atelier"] :is(.sidebar,.topbar,.content-preview,.inspector) {
+  background:var(--surface-raised); color:var(--ink);
+  backdrop-filter:none; -webkit-backdrop-filter:none; border-color:var(--border);
+}
+html[data-arrow-identity="atelier"] :is(.app-shell,.toolbar-buttons) { background:var(--surface); }
+html[data-arrow-identity="atelier"] :is(.sidebar-section,.content-preview) { border-color:var(--border); }
+html[data-arrow-identity="atelier"].dark :is(.sidebar,.topbar,.content-preview,.inspector) { background:#171719; }
+html[data-arrow-theme="light"][data-arrow-identity="atelier"]:not(.dark) :is(.sidebar,.topbar,.content-preview,.inspector) { background:#fffefa; color:#222; }
