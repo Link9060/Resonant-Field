@@ -38,6 +38,7 @@
       </div>
 
       <div class="top-actions">
+        <button id="atlasMobileFilters" class="atlas-mobile-filters" type="button" aria-controls="atlasSidebar" aria-expanded="false" aria-label="Open Atlas filters">☷ <span>Explore</span></button>
         <span class="status"><i></i><span id="fieldStatus">DEMO</span></span>
         <div class="account-wrap">
           <button id="accountButton" class="account-action" type="button" aria-haspopup="menu" aria-expanded="false">
@@ -63,7 +64,7 @@
       </div>
     </header>
 
-    <aside class="sidebar">
+    <aside class="sidebar" id="atlasSidebar" aria-label="Atlas search and filters">
       <div class="sidebar-section">
         <div class="search-wrap">
           <span class="search-icon">⌕</span>
@@ -113,6 +114,7 @@
       </section>
     </aside>
 
+    <button class="atlas-mobile-scrim" id="atlasMobileScrim" type="button" aria-label="Close Atlas filters" hidden></button>
     <main class="graph-shell">
       <div class="graph-toolbar">
         <div>
@@ -127,7 +129,16 @@
         </div>
       </div>
 
-      <canvas id="graph" aria-label="Interactive knowledge graph"></canvas>
+      <div class="atlas-map-controls" aria-label="Map navigation">
+        <span class="atlas-map-controls-title">ATLAS / MAP</span>
+        <button id="atlasMapFit" type="button" aria-label="Fit all nodes to map">⌖ <span>Fit</span></button>
+        <div class="atlas-map-zoom" role="group" aria-label="Map zoom">
+          <button id="atlasMapMinus" type="button" aria-label="Zoom out">−</button>
+          <output id="atlasMapZoomLabel" aria-label="Current map zoom">100%</output>
+          <button id="atlasMapPlus" type="button" aria-label="Zoom in">+</button>
+        </div>
+      </div>
+      <canvas id="graph" aria-label="Interactive knowledge graph" tabindex="0"></canvas>
       <div id="hoverCard" class="hover-card" hidden></div>
       <div id="buildFieldOverlay" class="build-field-overlay" hidden>
         <div class="build-field-stage">
