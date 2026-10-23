@@ -1915,3 +1915,18 @@ html.dark { --ink-faint:#9699a4; }
 @media(prefers-reduced-motion:reduce) {
   :root:not([data-arrow-motion="full"]) .atlas-map-controls * {transition:none!important;animation:none!important;}
 }
+
+/* ARROW beta material parity. Identity color also tints the map workspace
+   and card surfaces; contrast and original map controls are preserved. */
+:root[data-arrow-adapt]:not([data-arrow-adapt="core"])[data-arrow-theme="light"] {
+  --canvas:color-mix(in srgb,var(--arrow-adapt-primary,#73849c) 10%,#f9fafc);
+  --surface:color-mix(in srgb,var(--arrow-adapt-primary,#73849c) 4%,#fff);
+  --surface-raised:color-mix(in srgb,var(--arrow-adapt-primary,#73849c) 3%,#fff);
+  --border:color-mix(in srgb,var(--arrow-adapt-primary,#73849c) 24%,#dfe4eb);
+}
+:root[data-arrow-adapt]:not([data-arrow-adapt="core"])[data-arrow-theme="dark"] {
+  --canvas:color-mix(in srgb,var(--arrow-adapt-primary,#73849c) 10%,#11141a);
+  --surface:color-mix(in srgb,var(--arrow-adapt-primary,#73849c) 11%,#222731);
+  --surface-raised:color-mix(in srgb,var(--arrow-adapt-primary,#73849c) 13%,#29313b);
+  --border:color-mix(in srgb,var(--arrow-adapt-primary,#73849c) 26%,#414954);
+}
